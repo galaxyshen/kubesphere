@@ -72,7 +72,6 @@ func (h Auth) ServeHTTP(resp http.ResponseWriter, req *http.Request) (int, error
 		token, err := h.Validate(uToken)
 
 		if err != nil {
-			log.Println(uToken)
 			return h.HandleUnauthorized(resp, err), nil
 		}
 
@@ -131,7 +130,9 @@ func (h Auth) InjectContext(req *http.Request, token *jwt.Token) (*http.Request,
 	}
 
 	// hard code, support jenkins auth plugin
-	if httpserver.Path(req.URL.Path).Matches("/kapis/jenkins.kubesphere.io") || httpserver.Path(req.URL.Path).Matches("job") {
+	if httpserver.Path(req.URL.Path).Matches("/kapis/jenkins.kubesphere.io") ||
+		httpserver.Path(req.URL.Path).Matches("job") ||
+		httpserver.Path(req.URL.Path).Matches("/kapis/devops.kubesphere.io/v1alpha2") {
 		req.SetBasicAuth(username, token.Raw)
 	}
 

@@ -18,10 +18,14 @@
 package iam
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"kubesphere.io/kubesphere/pkg/constants"
 	"kubesphere.io/kubesphere/pkg/informers"
+	"kubesphere.io/kubesphere/pkg/models/kubeconfig"
+	"kubesphere.io/kubesphere/pkg/models/kubectl"
 	"kubesphere.io/kubesphere/pkg/params"
 	"kubesphere.io/kubesphere/pkg/simple/client/k8s"
 	"kubesphere.io/kubesphere/pkg/simple/client/redis"
@@ -49,6 +53,16 @@ var (
 	adminEmail      string
 	adminPassword   string
 	tokenExpireTime time.Duration
+	initUsers       []initUser
+)
+
+type initUser struct {
+	models.User
+	Hidden bool `json:"hidden"`
+}
+
+const (
+	userInitFile = "/etc/ks-iam/users.json"
 )
 
 func Init(email, password string, t time.Duration) error {
@@ -67,12 +81,18 @@ func Init(email, password string, t time.Duration) error {
 	err = checkAndCreateDefaultUser(conn)
 
 	if err != nil {
+		glog.Errorln("create default users", err)
 		return err
 	}
 
 	err = checkAndCreateDefaultGroup(conn)
 
-	return err
+	if err != nil {
+		glog.Errorln("create default groups", err)
+		return err
+	}
+
+	return nil
 }
 
 func checkAndCreateDefaultGroup(conn ldap.Client) error {
@@ -107,11 +127,11 @@ func checkAndCreateDefaultUser(conn ldap.Client) error {
 		ldapclient.UserSearchBase,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		"(&(objectClass=inetOrgPerson))",
-		nil,
+		[]string{"uid"},
 		nil,
 	)
 
-	users, err := conn.Search(userSearchRequest)
+	result, err := conn.Search(userSearchRequest)
 
 	if ldap.IsErrorWithCode(err, ldap.LDAPResultNoSuchObject) {
 		err = createUserBaseDN(conn)
@@ -124,14 +144,33 @@ func checkAndCreateDefaultUser(conn ldap.Client) error {
 		return fmt.Errorf("iam database init failed: %s\n", err)
 	}
 
-	if users == nil || len(users.Entries) == 0 {
-		_, err := CreateUser(&models.User{Username: constants.AdminUserName, Email: adminEmail, Password: adminPassword, Description: "Administrator account that was always created by default."})
-		if err != nil {
-			return fmt.Errorf("admin create failed: %s\n", err)
+	data, err := ioutil.ReadFile(userInitFile)
+	if err == nil {
+		json.Unmarshal(data, &initUsers)
+	}
+	initUsers = append(initUsers, initUser{User: models.User{Username: constants.AdminUserName, Email: adminEmail, Password: adminPassword, Description: "Administrator account that was always created by default.", ClusterRole: constants.ClusterAdmin}})
+
+	for _, user := range initUsers {
+		if result == nil || !containsUser(result.Entries, user) {
+			_, err = CreateUser(&user.User)
+			if err != nil && !ldap.IsErrorWithCode(err, ldap.LDAPResultEntryAlreadyExists) {
+				glog.Errorln("user init failed", user.Username, err)
+				return fmt.Errorf("user %s init failed: %s\n", user.Username, err)
+			}
 		}
 	}
 
 	return nil
+}
+
+func containsUser(entries []*ldap.Entry, user initUser) bool {
+	for _, entry := range entries {
+		uid := entry.GetAttributeValue("uid")
+		if uid == user.Username {
+			return true
+		}
+	}
+	return false
 }
 
 func createUserBaseDN(conn ldap.Client) error {
@@ -192,6 +231,7 @@ func Login(username string, password string, ip string) (*models.Token, error) {
 	err = conn.Bind(dn, password)
 
 	if err != nil {
+		glog.Errorln("auth error", username, err)
 		return nil, err
 	}
 
@@ -226,55 +266,6 @@ func LoginLog(username string) ([]string, error) {
 	}
 
 	return data, nil
-}
-
-func ListUsersByName(names []string) (*models.PageableResponse, error) {
-	users := make([]*models.User, 0)
-
-	for _, name := range names {
-		if !k8sutil.ContainsUser(users, name) {
-			user, err := GetUserInfo(name)
-			if err != nil {
-				if ldap.IsErrorWithCode(err, ldap.LDAPResultNoSuchObject) {
-					continue
-				}
-				return nil, err
-			}
-			users = append(users, user)
-		}
-	}
-
-	items := make([]interface{}, 0)
-
-	for _, u := range users {
-		items = append(items, u)
-	}
-
-	return &models.PageableResponse{Items: items, TotalCount: len(items)}, nil
-}
-
-func ListUserByEmail(email []string) (*models.PageableResponse, error) {
-	users := make([]*models.User, 0)
-	for _, mail := range email {
-		user, err := GetUserInfoByEmail(mail)
-		if err != nil {
-			if ldap.IsErrorWithCode(err, ldap.LDAPResultNoSuchObject) {
-				continue
-			}
-			return nil, err
-		}
-		if !k8sutil.ContainsUser(users, user.Username) {
-			users = append(users, user)
-		}
-	}
-
-	items := make([]interface{}, 0)
-
-	for _, u := range users {
-		items = append(items, u)
-	}
-
-	return &models.PageableResponse{Items: items, TotalCount: len(items)}, nil
 }
 
 func ListUsers(conditions *params.Conditions, orderBy string, reverse bool, limit, offset int) (*models.PageableResponse, error) {
@@ -325,6 +316,7 @@ func ListUsers(conditions *params.Conditions, orderBy string, reverse bool, limi
 		response, err := conn.Search(userSearchRequest)
 
 		if err != nil {
+			glog.Errorln("search user", err)
 			return nil, err
 		}
 
@@ -338,7 +330,9 @@ func ListUsers(conditions *params.Conditions, orderBy string, reverse bool, limi
 
 			user := models.User{Username: uid, Email: email, Description: description, Lang: lang, CreateTime: createTimestamp}
 
-			users = append(users, user)
+			if !shouldHidden(user) {
+				users = append(users, user)
+			}
 		}
 
 		updatedControl := ldap.FindControl(response.Controls, ldap.ControlTypePaging)
@@ -386,6 +380,15 @@ func ListUsers(conditions *params.Conditions, orderBy string, reverse bool, limi
 	return &models.PageableResponse{Items: items, TotalCount: len(users)}, nil
 }
 
+func shouldHidden(user models.User) bool {
+	for _, initUser := range initUsers {
+		if initUser.Username == user.Username {
+			return initUser.Hidden
+		}
+	}
+	return false
+}
+
 func DescribeUser(username string) (*models.User, error) {
 
 	user, err := GetUserInfo(username)
@@ -396,52 +399,12 @@ func DescribeUser(username string) (*models.User, error) {
 
 	groups, err := GetUserGroups(username)
 
-	if err != nil {
-		return nil, err
+	if err == nil {
+		user.Groups = groups
 	}
 
-	user.Groups = groups
 	user.AvatarUrl = getAvatar(username)
 
-	return user, nil
-}
-
-func GetUserInfoByEmail(mail string) (*models.User, error) {
-	conn, err := ldapclient.Client()
-
-	if err != nil {
-		return nil, err
-	}
-
-	userSearchRequest := ldap.NewSearchRequest(
-		ldapclient.UserSearchBase,
-		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-		fmt.Sprintf("(&(objectClass=inetOrgPerson)(mail=%s))", mail),
-		[]string{"uid", "description", "preferredLanguage", "createTimestamp"},
-		nil,
-	)
-
-	result, err := conn.Search(userSearchRequest)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(result.Entries) != 1 {
-		return nil, ldap.NewError(ldap.LDAPResultNoSuchObject, fmt.Errorf("user %s does not exist", mail))
-	}
-
-	username := result.Entries[0].GetAttributeValue("uid")
-	description := result.Entries[0].GetAttributeValue("description")
-	lang := result.Entries[0].GetAttributeValue("preferredLanguage")
-	createTimestamp, _ := time.Parse("20060102150405Z", result.Entries[0].GetAttributeValue("createTimestamp"))
-	user := &models.User{Username: username, Email: mail, Description: description, Lang: lang, CreateTime: createTimestamp}
-	user.LastLoginTime = getLastLoginTime(username)
-	clusterRole, err := GetUserClusterRole(user.Username)
-	if err != nil {
-		return nil, err
-	}
-	user.ClusterRole = clusterRole.Name
 	return user, nil
 }
 
@@ -465,6 +428,7 @@ func GetUserInfo(username string) (*models.User, error) {
 	result, err := conn.Search(userSearchRequest)
 
 	if err != nil {
+		glog.Errorln("search user", err)
 		return nil, err
 	}
 
@@ -564,15 +528,24 @@ func DeleteUser(username string) error {
 
 	deleteRequest := ldap.NewDelRequest(fmt.Sprintf("uid=%s,%s", username, ldapclient.UserSearchBase), nil)
 
-	err = conn.Del(deleteRequest)
-
-	if err != nil {
+	if err = conn.Del(deleteRequest); err != nil {
+		glog.Errorln("delete user", err)
 		return err
 	}
 
-	err = deleteRoleBindings(username)
+	if err = deleteRoleBindings(username); err != nil {
+		glog.Errorln("delete user role bindings failed", username, err)
+	}
 
-	return err
+	if err := kubeconfig.DelKubeConfig(username); err != nil {
+		glog.Errorln("delete user kubeconfig failed", username, err)
+	}
+
+	if err := kubectl.DelKubectlDeploy(username); err != nil {
+		glog.Errorln("delete user terminal pod failed", username, err)
+	}
+
+	return nil
 }
 
 func deleteRoleBindings(username string) error {
@@ -673,14 +646,11 @@ func UserCreateCheck(check string) (exist bool, err error) {
 	result, err := conn.Search(userSearchRequest)
 
 	if err != nil {
+		glog.Errorln("search user", err)
 		return false, err
 	}
 
-	if len(result.Entries) > 0 {
-		return true, nil
-	} else {
-		return false, nil
-	}
+	return len(result.Entries) > 0, nil
 }
 
 func CreateUser(user *models.User) (*models.User, error) {
@@ -708,6 +678,7 @@ func CreateUser(user *models.User) (*models.User, error) {
 	result, err := conn.Search(userSearchRequest)
 
 	if err != nil {
+		glog.Errorln("search user", err)
 		return nil, err
 	}
 
@@ -718,6 +689,7 @@ func CreateUser(user *models.User) (*models.User, error) {
 	maxUid, err := getMaxUid(conn)
 
 	if err != nil {
+		glog.Errorln("get max uid", err)
 		return nil, err
 	}
 
@@ -743,6 +715,7 @@ func CreateUser(user *models.User) (*models.User, error) {
 	err = conn.Add(userCreateRequest)
 
 	if err != nil {
+		glog.Errorln("create user", err)
 		return nil, err
 	}
 
@@ -750,10 +723,15 @@ func CreateUser(user *models.User) (*models.User, error) {
 		setAvatar(user.Username, user.AvatarUrl)
 	}
 
+	if err := kubeconfig.CreateKubeConfig(user.Username); err != nil {
+		glog.Errorln("create user kubeconfig failed", user.Username, err)
+	}
+
 	if user.ClusterRole != "" {
 		err := CreateClusterRoleBinding(user.Username, user.ClusterRole)
 
 		if err != nil {
+			glog.Errorln("create cluster role binding filed", err)
 			return nil, err
 		}
 	}
@@ -864,6 +842,7 @@ func UpdateUser(user *models.User) (*models.User, error) {
 	err = CreateClusterRoleBinding(user.Username, user.ClusterRole)
 
 	if err != nil {
+		glog.Errorln("create cluster role binding filed", err)
 		return nil, err
 	}
 
@@ -884,6 +863,7 @@ func DeleteGroup(path string) error {
 	err = conn.Del(groupDeleteRequest)
 
 	if err != nil {
+		glog.Errorln("delete user group", err)
 		return err
 	}
 
@@ -903,6 +883,7 @@ func CreateGroup(group *models.Group) (*models.Group, error) {
 	maxGid, err := getMaxGid(conn)
 
 	if err != nil {
+		glog.Errorln("get max gid", err)
 		return nil, err
 	}
 
@@ -930,6 +911,7 @@ func CreateGroup(group *models.Group) (*models.Group, error) {
 	err = conn.Add(groupCreateRequest)
 
 	if err != nil {
+		glog.Errorln("create group", err)
 		return nil, err
 	}
 
@@ -976,43 +958,11 @@ func UpdateGroup(group *models.Group) (*models.Group, error) {
 	err = conn.Modify(groupUpdateRequest)
 
 	if err != nil {
+		glog.Errorln("update group", err)
 		return nil, err
 	}
 
 	return group, nil
-}
-
-func CountChild(path string) (int, error) {
-	// bind root DN
-	conn, err := ldapclient.Client()
-	if err != nil {
-		return 0, err
-	}
-	defer conn.Close()
-
-	var groupSearchRequest *ldap.SearchRequest
-	if path == "" {
-		groupSearchRequest = ldap.NewSearchRequest(ldapclient.GroupSearchBase,
-			ldap.ScopeSingleLevel, ldap.NeverDerefAliases, 0, 0, false,
-			"(&(objectClass=posixGroup))",
-			[]string{"cn", "gidNumber", "memberUid", "description"},
-			nil)
-	} else {
-		searchBase, cn := splitPath(path)
-		groupSearchRequest = ldap.NewSearchRequest(fmt.Sprintf("cn=%s,%s", cn, searchBase),
-			ldap.ScopeSingleLevel, ldap.NeverDerefAliases, 0, 0, false,
-			"(&(objectClass=posixGroup))",
-			[]string{"cn", "gidNumber", "memberUid", "description"},
-			nil)
-	}
-
-	result, err := conn.Search(groupSearchRequest)
-
-	if err != nil {
-		return 0, err
-	}
-
-	return len(result.Entries), nil
 }
 
 func ChildList(path string) ([]models.Group, error) {
@@ -1105,6 +1055,7 @@ func DescribeGroup(path string) (*models.Group, error) {
 	result, err := conn.Search(groupSearchRequest)
 
 	if err != nil {
+		glog.Errorln("search group", err)
 		return nil, err
 	}
 

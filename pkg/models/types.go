@@ -18,7 +18,7 @@
 package models
 
 import (
-	v12 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"time"
 
 	"k8s.io/api/rbac/v1"
@@ -34,21 +34,6 @@ type Workspace struct {
 	Admin          string   `json:"admin,omitempty"`
 	Namespaces     []string `json:"namespaces"`
 	DevopsProjects []string `json:"devops_projects"`
-}
-
-type WorkspaceDPBinding struct {
-	Workspace     string `gorm:"primary_key"`
-	DevOpsProject string `gorm:"primary_key"`
-}
-
-type DevopsProject struct {
-	ProjectId   string     `json:"project_id,omitempty"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	Creator     string     `json:"creator"`
-	CreateTime  *time.Time `json:"create_time,omitempty"`
-	Status      *string    `json:"status"`
-	Visibility  *string    `json:"visibility,omitempty"`
 }
 
 type Action struct {
@@ -117,6 +102,6 @@ type Token struct {
 }
 
 type ResourceQuota struct {
-	Namespace string                  `json:"namespace"`
-	Data      v12.ResourceQuotaStatus `json:"data"`
+	Namespace string                     `json:"namespace"`
+	Data      corev1.ResourceQuotaStatus `json:"data"`
 }

@@ -19,19 +19,21 @@ package workspaces
 
 import (
 	"fmt"
+	"github.com/golang/glog"
+	"github.com/kiali/kiali/log"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"kubesphere.io/kubesphere/pkg/constants"
+	"kubesphere.io/kubesphere/pkg/db"
 	"kubesphere.io/kubesphere/pkg/informers"
 	"kubesphere.io/kubesphere/pkg/models"
+	"kubesphere.io/kubesphere/pkg/models/devops"
 	"kubesphere.io/kubesphere/pkg/models/iam"
 	"kubesphere.io/kubesphere/pkg/models/resources"
 	"kubesphere.io/kubesphere/pkg/params"
+	"kubesphere.io/kubesphere/pkg/simple/client/devops_mysql"
 	"kubesphere.io/kubesphere/pkg/simple/client/k8s"
-	"kubesphere.io/kubesphere/pkg/simple/client/kubesphere"
-	"kubesphere.io/kubesphere/pkg/simple/client/mysql"
 	"kubesphere.io/kubesphere/pkg/utils/k8sutil"
 	"kubesphere.io/kubesphere/pkg/utils/sliceutil"
-
 	"strings"
 
 	core "k8s.io/api/core/v1"
@@ -42,28 +44,6 @@ import (
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
-
-func UnBindDevopsProject(workspace string, devops string) error {
-	db := mysql.Client()
-	return db.Delete(&models.WorkspaceDPBinding{Workspace: workspace, DevOpsProject: devops}).Error
-}
-
-func CreateDevopsProject(username string, workspace string, devops *models.DevopsProject) (*models.DevopsProject, error) {
-
-	created, err := kubesphere.Client().CreateDevopsProject(username, devops)
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = BindingDevopsProject(workspace, created.ProjectId)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return created, nil
-}
 
 func Namespaces(workspaceName string) ([]*core.Namespace, error) {
 	namespaceLister := informers.SharedInformerFactory().Core().V1().Namespaces().Lister()
@@ -84,11 +64,6 @@ func Namespaces(workspaceName string) ([]*core.Namespace, error) {
 	}
 
 	return out, nil
-}
-
-func BindingDevopsProject(workspace string, devops string) error {
-	db := mysql.Client()
-	return db.Create(&models.WorkspaceDPBinding{Workspace: workspace, DevOpsProject: devops}).Error
 }
 
 func DeleteNamespace(workspace string, namespaceName string) error {
@@ -121,16 +96,24 @@ func InviteUser(workspaceName string, user *models.User) error {
 	workspaceRole, err := iam.GetUserWorkspaceRole(workspaceName, user.Username)
 
 	if err != nil && !apierrors.IsNotFound(err) {
+		glog.Errorf("get workspace role failed: %+v", err)
 		return err
 	}
 
 	workspaceRoleName := fmt.Sprintf("workspace:%s:%s", workspaceName, strings.TrimPrefix(user.WorkspaceRole, "workspace-"))
+	var currentWorkspaceRoleName string
+	if workspaceRole != nil {
+		currentWorkspaceRoleName = workspaceRole.Name
+	}
 
-	if workspaceRole != nil && workspaceRole.Name != workspaceRoleName {
-		err := DeleteWorkspaceRoleBinding(workspaceName, user.Username, user.WorkspaceRole)
+	if currentWorkspaceRoleName != workspaceRoleName && currentWorkspaceRoleName != "" {
+		err := DeleteWorkspaceRoleBinding(workspaceName, user.Username, workspaceRole.Annotations[constants.DisplayNameAnnotationKey])
 		if err != nil {
+			glog.Errorf("delete workspace role binding failed: %+v", err)
 			return err
 		}
+	} else if currentWorkspaceRoleName != "" {
+		return nil
 	}
 
 	return CreateWorkspaceRoleBinding(workspaceName, user.Username, user.WorkspaceRole)
@@ -144,17 +127,21 @@ func CreateWorkspaceRoleBinding(workspace, username string, role string) error {
 
 	roleBindingName := fmt.Sprintf("workspace:%s:%s", workspace, strings.TrimPrefix(role, "workspace-"))
 	workspaceRoleBinding, err := informers.SharedInformerFactory().Rbac().V1().ClusterRoleBindings().Lister().Get(roleBindingName)
-	workspaceRoleBinding = workspaceRoleBinding.DeepCopy()
 	if err != nil {
 		return err
 	}
 
 	if !k8sutil.ContainsUser(workspaceRoleBinding.Subjects, username) {
+		workspaceRoleBinding = workspaceRoleBinding.DeepCopy()
 		workspaceRoleBinding.Subjects = append(workspaceRoleBinding.Subjects, v1.Subject{APIGroup: "rbac.authorization.k8s.io", Kind: "User", Name: username})
 		_, err = k8s.Client().RbacV1().ClusterRoleBindings().Update(workspaceRoleBinding)
+		if err != nil {
+			log.Errorf("update workspace role binding failed: %+v", err)
+			return err
+		}
 	}
 
-	return err
+	return nil
 }
 
 func DeleteWorkspaceRoleBinding(workspace, username string, role string) error {
@@ -185,18 +172,17 @@ func DeleteWorkspaceRoleBinding(workspace, username string, role string) error {
 
 func GetDevOpsProjects(workspaceName string) ([]string, error) {
 
-	db := mysql.Client()
+	dbconn := devops_mysql.OpenDatabase()
 
-	var workspaceDOPBindings []models.WorkspaceDPBinding
-
-	if err := db.Where("workspace = ?", workspaceName).Find(&workspaceDOPBindings).Error; err != nil {
-		return nil, err
-	}
+	query := dbconn.Select(devops.DevOpsProjectIdColumn).
+		From(devops.DevOpsProjectTableName).
+		Where(db.And(db.Eq(devops.DevOpsProjectWorkSpaceColumn, workspaceName),
+			db.Eq(devops.StatusColumn, devops.StatusActive)))
 
 	devOpsProjects := make([]string, 0)
 
-	for _, workspaceDOPBinding := range workspaceDOPBindings {
-		devOpsProjects = append(devOpsProjects, workspaceDOPBinding.DevOpsProject)
+	if _, err := query.Load(&devOpsProjects); err != nil {
+		return nil, err
 	}
 	return devOpsProjects, nil
 }
@@ -250,12 +236,18 @@ func GetAllProjectNums() (int, error) {
 }
 
 func GetAllDevOpsProjectsNums() (int, error) {
-	db := mysql.Client()
-	var count int
-	if err := db.Model(&models.WorkspaceDPBinding{}).Count(&count).Error; err != nil {
+	dbconn := devops_mysql.OpenDatabase()
+
+	query := dbconn.Select(devops.DevOpsProjectIdColumn).
+		From(devops.DevOpsProjectTableName).
+		Where(db.Eq(devops.StatusColumn, devops.StatusActive))
+
+	devOpsProjects := make([]string, 0)
+
+	if _, err := query.Load(&devOpsProjects); err != nil {
 		return 0, err
 	}
-	return count, nil
+	return len(devOpsProjects), nil
 }
 
 func GetAllAccountNums() (int, error) {

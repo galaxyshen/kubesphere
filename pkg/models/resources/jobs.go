@@ -21,6 +21,7 @@ import (
 	"kubesphere.io/kubesphere/pkg/constants"
 	"kubesphere.io/kubesphere/pkg/informers"
 	"kubesphere.io/kubesphere/pkg/params"
+	"kubesphere.io/kubesphere/pkg/utils/k8sutil"
 	"kubesphere.io/kubesphere/pkg/utils/sliceutil"
 	"sort"
 	"strings"
@@ -60,6 +61,14 @@ func (*jobSearcher) match(match map[string]string, item *batchv1.Job) bool {
 			if jobStatus(item) != v {
 				return false
 			}
+		case includeCronJob:
+			if v == "false" && k8sutil.IsControlledBy(item.OwnerReferences, cronJobKind, "") {
+				return false
+			}
+		case includeS2iRun:
+			if v == "false" && k8sutil.IsControlledBy(item.OwnerReferences, s2iRunKind, "") {
+				return false
+			}
 		case Name:
 			names := strings.Split(v, "|")
 			if !sliceutil.HasString(names, item.Name) {
@@ -86,7 +95,7 @@ func (*jobSearcher) fuzzy(fuzzy map[string]string, item *batchv1.Job) bool {
 			if !strings.Contains(item.Name, v) && !strings.Contains(item.Annotations[constants.DisplayNameAnnotationKey], v) {
 				return false
 			}
-		case label:
+		case Label:
 			if !searchFuzzy(item.Labels, "", v) {
 				return false
 			}
@@ -126,7 +135,7 @@ func (*jobSearcher) compare(a, b *batchv1.Job, orderBy string) bool {
 	switch orderBy {
 	case CreateTime:
 		return a.CreationTimestamp.Time.Before(b.CreationTimestamp.Time)
-	case updateTime:
+	case UpdateTime:
 		return jobUpdateTime(a).Before(jobUpdateTime(b))
 	case Name:
 		fallthrough

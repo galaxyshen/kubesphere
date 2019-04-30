@@ -18,7 +18,6 @@
 package tenant
 
 import (
-	"fmt"
 	"github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
@@ -29,13 +28,16 @@ import (
 	"kubesphere.io/kubesphere/pkg/apiserver/logging"
 	"kubesphere.io/kubesphere/pkg/constants"
 	"kubesphere.io/kubesphere/pkg/errors"
-	"kubesphere.io/kubesphere/pkg/models"
+	"kubesphere.io/kubesphere/pkg/models/devops"
 	"kubesphere.io/kubesphere/pkg/models/iam"
+	"kubesphere.io/kubesphere/pkg/models/metrics"
 	"kubesphere.io/kubesphere/pkg/models/resources"
 	"kubesphere.io/kubesphere/pkg/models/tenant"
 	"kubesphere.io/kubesphere/pkg/models/workspaces"
 	"kubesphere.io/kubesphere/pkg/params"
-	"kubesphere.io/kubesphere/pkg/simple/client/kubesphere"
+
+	"kubesphere.io/kubesphere/pkg/simple/client/elasticsearch"
+	"kubesphere.io/kubesphere/pkg/utils/sliceutil"
 	"net/http"
 	"strings"
 )
@@ -123,6 +125,22 @@ func ListNamespaces(req *restful.Request, resp *restful.Response) {
 		return
 	}
 
+	namespaces := make([]*v1.Namespace, 0)
+
+	for _, item := range result.Items {
+		namespaces = append(namespaces, item.(*v1.Namespace).DeepCopy())
+	}
+
+	namespaces = metrics.GetNamespacesWithMetrics(namespaces)
+
+	items := make([]interface{}, 0)
+
+	for _, item := range namespaces {
+		items = append(items, item)
+	}
+
+	result.Items = items
+
 	resp.WriteAsJson(result)
 }
 
@@ -198,14 +216,16 @@ func ListDevopsProjects(req *restful.Request, resp *restful.Response) {
 	conditions, err := params.ParseConditions(req.QueryParameter(params.ConditionsParam))
 
 	if err != nil {
-		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
+		glog.Errorf("%+v", err)
+		errors.ParseSvcErr(restful.NewError(http.StatusBadRequest, err.Error()), resp)
 		return
 	}
 
 	result, err := tenant.ListDevopsProjects(workspace, username, conditions, orderBy, reverse, limit, offset)
 
 	if err != nil {
-		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
+		glog.Errorf("%+v", err)
+		errors.ParseSvcErr(err, resp)
 		return
 	}
 
@@ -213,28 +233,23 @@ func ListDevopsProjects(req *restful.Request, resp *restful.Response) {
 }
 
 func DeleteDevopsProject(req *restful.Request, resp *restful.Response) {
-	devops := req.PathParameter("id")
+	projectId := req.PathParameter("id")
 	workspaceName := req.PathParameter("workspace")
 	username := req.HeaderParameter(constants.UserNameHeader)
 
 	_, err := tenant.GetWorkspace(workspaceName)
 
 	if err != nil {
-		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
+		glog.Errorf("%+v", err)
+		errors.ParseSvcErr(restful.NewError(http.StatusBadRequest, err.Error()), resp)
 		return
 	}
 
-	err = kubesphere.Client().DeleteDevopsProject(username, devops)
+	err = tenant.DeleteDevOpsProject(projectId, username)
 
 	if err != nil {
-		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
-		return
-	}
-
-	err = workspaces.UnBindDevopsProject(workspaceName, devops)
-
-	if err != nil {
-		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
+		glog.Errorf("%+v", err)
+		errors.ParseSvcErr(err, resp)
 		return
 	}
 
@@ -246,20 +261,22 @@ func CreateDevopsProject(req *restful.Request, resp *restful.Response) {
 	workspaceName := req.PathParameter("workspace")
 	username := req.HeaderParameter(constants.UserNameHeader)
 
-	var devops models.DevopsProject
+	var devops devops.DevOpsProject
 
 	err := req.ReadEntity(&devops)
 
 	if err != nil {
-		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
+		glog.Infof("%+v", err)
+		errors.ParseSvcErr(restful.NewError(http.StatusBadRequest, err.Error()), resp)
 		return
 	}
 
 	glog.Infoln("create workspace", username, workspaceName, devops)
-	project, err := workspaces.CreateDevopsProject(username, workspaceName, &devops)
+	project, err := tenant.CreateDevopsProject(username, workspaceName, &devops)
 
 	if err != nil {
-		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
+		glog.Errorf("%+v", err)
+		errors.ParseSvcErr(err, resp)
 		return
 	}
 
@@ -281,13 +298,15 @@ func ListNamespaceRules(req *restful.Request, resp *restful.Response) {
 }
 
 func ListDevopsRules(req *restful.Request, resp *restful.Response) {
+
 	devops := req.PathParameter("devops")
 	username := req.HeaderParameter(constants.UserNameHeader)
 
-	rules, err := iam.GetUserDevopsSimpleRules(username, devops)
+	rules, err := tenant.GetUserDevopsSimpleRules(username, devops)
 
 	if err != nil {
-		resp.WriteError(http.StatusInternalServerError, err)
+		glog.Errorf("%+v", err)
+		errors.ParseSvcErr(err, resp)
 		return
 	}
 
@@ -298,37 +317,84 @@ func LogQuery(req *restful.Request, resp *restful.Response) {
 
 	username := req.HeaderParameter(constants.UserNameHeader)
 
-	mapping, err := iam.GetUserWorkspaceRoleMap(username)
-	if err != nil {
-		resp.WriteError(http.StatusInternalServerError, err)
-		glog.Errorln(err)
-		return
-	}
-
-	workspaces := make([]string, 0)
-	for workspaceName, role := range mapping {
-		if role == fmt.Sprintf("workspace:%s:admin", workspaceName) {
-			workspaces = append(workspaces, workspaceName)
-		}
-	}
-
 	// regenerate the request for log query
 	newUrl := net.FormatURL("http", "127.0.0.1", 80, "/kapis/logging.kubesphere.io/v1alpha2/cluster")
 	values := req.Request.URL.Query()
 
-	rules, err := iam.GetUserClusterRules(username)
+	clusterRules, err := iam.GetUserClusterRules(username)
 	if err != nil {
 		resp.WriteError(http.StatusInternalServerError, err)
 		glog.Errorln(err)
 		return
 	}
 
-	if !iam.RulesMatchesRequired(rules, rbacv1.PolicyRule{Verbs: []string{"get"}, Resources: []string{"*"}, APIGroups: []string{"logging.kubesphere.io"}}) {
-		values.Set("workspaces", strings.Join(workspaces, ","))
+	hasClusterLogAccess := iam.RulesMatchesRequired(clusterRules, rbacv1.PolicyRule{Verbs: []string{"get"}, Resources: []string{"*"}, APIGroups: []string{"logging.kubesphere.io"}})
+	// if the user is not a cluster admin
+	if !hasClusterLogAccess {
+		queryNamespaces := strings.Split(req.QueryParameter("namespaces"), ",")
+		// then the user can only view logs of namespaces he belongs to
+		namespaces := make([]string, 0)
+		roles, err := iam.GetUserRoles("", username)
+		if err != nil {
+			resp.WriteError(http.StatusInternalServerError, err)
+			glog.Errorln(err)
+		}
+		for _, role := range roles {
+			if !sliceutil.HasString(namespaces, role.Namespace) && iam.RulesMatchesRequired(role.Rules, rbacv1.PolicyRule{Verbs: []string{"get"}, Resources: []string{"*"}, APIGroups: []string{"logging.kubesphere.io"}}) {
+				namespaces = append(namespaces, role.Namespace)
+			}
+		}
+
+		// if the user belongs to no namespace
+		// then no log visible
+		if len(namespaces) == 0 {
+			res := esclient.QueryResult{Status: http.StatusOK}
+			resp.WriteAsJson(res)
+			return
+		} else if len(queryNamespaces) == 1 && queryNamespaces[0] == "" {
+			values.Set("namespaces", strings.Join(namespaces, ","))
+		} else {
+			inter := intersection(queryNamespaces, namespaces)
+			if len(inter) == 0 {
+				res := esclient.QueryResult{Status: http.StatusOK}
+				resp.WriteAsJson(res)
+				return
+			}
+			values.Set("namespaces", strings.Join(inter, ","))
+		}
 	}
+
 	newUrl.RawQuery = values.Encode()
 
 	// forward the request to logging model
 	newHttpRequest, _ := http.NewRequest(http.MethodGet, newUrl.String(), nil)
 	logging.LoggingQueryCluster(restful.NewRequest(newHttpRequest), resp)
+}
+
+func intersection(s1, s2 []string) (inter []string) {
+	hash := make(map[string]bool)
+	for _, e := range s1 {
+		hash[e] = true
+	}
+	for _, e := range s2 {
+		// If elements present in the hashmap then append intersection list.
+		if hash[e] {
+			inter = append(inter, e)
+		}
+	}
+	//Remove dups from slice.
+	inter = removeDups(inter)
+	return
+}
+
+//Remove dups from slice.
+func removeDups(elements []string) (nodups []string) {
+	encountered := make(map[string]bool)
+	for _, element := range elements {
+		if !encountered[element] {
+			nodups = append(nodups, element)
+			encountered[element] = true
+		}
+	}
+	return
 }

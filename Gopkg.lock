@@ -2,14 +2,6 @@
 
 
 [[projects]]
-  branch = "default"
-  digest = "1:c0164b6d52877372590085b45f53a160f47c24e8a2312bb815489223044f5914"
-  name = "bitbucket.org/ww/goautoneg"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
-
-[[projects]]
   digest = "1:4d6f036ea3fe636bcb2e89850bcdc62a771354e157cd51b8b22a2de8562bf663"
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
@@ -18,18 +10,7 @@
   version = "v0.37.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:81f8c061c3d18ed1710957910542bc17d2b789c6cd19e0f654c30b35fd255ca5"
-  name = "github.com/Azure/go-ansiterm"
-  packages = [
-    ".",
-    "winterm",
-  ]
-  pruneopts = "NUT"
-  revision = "d6e3b3328b783f23731bc4d058875b0371ff8109"
-
-[[projects]]
-  digest = "1:2be791e7b333ff7c06f8fb3dc18a7d70580e9399dbdffd352621d067ff260b6e"
+  digest = "1:26b14a6dc72ace253599e969997d5ecf2143c63833c015179786bc756c76eaa4"
   name = "github.com/Microsoft/go-winio"
   packages = ["."]
   pruneopts = "NUT"
@@ -37,12 +18,12 @@
   version = "v0.4.12"
 
 [[projects]]
-  digest = "1:632e5f740de6cafce1c08f659bfa10e75f7e7938dfaeb3d99c82fcbf484484e2"
-  name = "github.com/NYTimes/gziphandler"
+  digest = "1:d043e5ae59276188d876090c261c311e146792c0908e08e67e766b1020a72d00"
+  name = "github.com/PuerkitoBio/goquery"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "dd0439581c7657cb652dfe5c71d7d48baf39541d"
-  version = "v1.1.1"
+  revision = "2d2796f41742ece03e8086188fa4db16a3a0b458"
+  version = "v1.5.0"
 
 [[projects]]
   digest = "1:0a111edd8693fd977f42a0c4f199a0efb13c20aec9da99ad8830c7bb6a87e8d6"
@@ -70,7 +51,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2795ce42ac79b6a0733d76c5c2de94f458fa0892949c1768351e2b5e41b5abc6"
+  digest = "1:1e31f7a894b511019f6d5ce4a9462cb60151440645bb25dd48b5940ff2bbbdf1"
   name = "github.com/aead/chacha20"
   packages = [
     ".",
@@ -78,6 +59,14 @@
   ]
   pruneopts = "NUT"
   revision = "8b13a72661dae6e9e5dea04f344f0dc95ea29547"
+
+[[projects]]
+  digest = "1:fc86904a62ac4bfff8cfbe94f42231ce3d8cea8fe2506d5293eaef468f8eaecf"
+  name = "github.com/andybalholm/cascadia"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "901648c87902174f774fac311d7f176f8647bdaa"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:680b63a131506e668818d630d3ca36123ff290afa0afc9f4be21940adca3f27d"
@@ -88,6 +77,22 @@
   version = "1.0.0"
 
 [[projects]]
+  digest = "1:5a23cd3a5496a0b2da7e3b348d14e77b11a210738c398200d7d6f04ea8cf3bd8"
+  name = "github.com/asaskevich/govalidator"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "ccb8e960c48f04d6935e72476ae4a51028f9e22f"
+  version = "v9"
+
+[[projects]]
+  digest = "1:15e3271f463f2f40d98bf426aabb86941fc66b10272ccfdfebe548683e37acb1"
+  name = "github.com/beevik/etree"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "8aee6516be3b1163bb6450c35c50e4969e3a3aa8"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "master"
   digest = "1:707ebe952a8b3d00b343c01536c79c73771d100f63ec6babeaed5c79e2b8a8dd"
   name = "github.com/beorn7/perks"
@@ -96,7 +101,7 @@
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
 
 [[projects]]
-  digest = "1:92aa7f157d0b4d08199dd6d9697652bc65c7d2179c15918141a357bf486559e0"
+  digest = "1:4d43362859489b0672b9a1544d5ae02231202a43172c7eda7a55d44799f97f53"
   name = "github.com/bifurcation/mint"
   packages = [
     ".",
@@ -122,31 +127,6 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:511b0e48adf05b1d17e32af772a1e0a047b909f51d401a572caae26fcf0b2950"
-  name = "github.com/coreos/etcd"
-  packages = [
-    "auth/authpb",
-    "clientv3",
-    "etcdserver/api/v3rpc/rpctypes",
-    "etcdserver/etcdserverpb",
-    "mvcc/mvccpb",
-    "pkg/tlsutil",
-    "pkg/transport",
-    "pkg/types",
-  ]
-  pruneopts = "NUT"
-  revision = "d57e8b8d97adfc4a6c224fe116714bf1a1f3beb9"
-  version = "v3.3.12"
-
-[[projects]]
-  digest = "1:1da3a221f0bc090792d3a2a080ff09008427c0e0f0533a4ed6abd8994421da73"
-  name = "github.com/coreos/go-systemd"
-  packages = ["daemon"]
-  pruneopts = "NUT"
-  revision = "95778dfbb74eb7e4dbaf43bf7d71809650ef8076"
-  version = "v19"
-
-[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -164,7 +144,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4c7d169280debf9f36b84a0f682094889cccc5dc0db8657f9cffc93b21975a57"
+  digest = "1:5b5643142a4d48d55f7a2ad09da4565be2b0ecc554c903a25d18b18159d39b9f"
   name = "github.com/docker/distribution"
   packages = [
     "digestset",
@@ -174,7 +154,7 @@
   revision = "6d62eb1d4a3515399431b713fde3ce5a9b40e8d5"
 
 [[projects]]
-  digest = "1:83d3c1bb3369d567aebb0b558daea7bbc7bff9aa277fb96eb281908d20464ac1"
+  digest = "1:addad6aa992efe1cd74f5bec0b069a68b35db1da8b042581002215d59b3ac54d"
   name = "github.com/docker/docker"
   packages = [
     "api",
@@ -196,8 +176,6 @@
     "pkg/ioutils",
     "pkg/longpath",
     "pkg/system",
-    "pkg/term",
-    "pkg/term/windows",
     "pkg/tlsconfig",
   ]
   pruneopts = "NUT"
@@ -206,7 +184,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:42cfcc9461365aacb806b9cfe929c926f0d3fb0f692bfc10c375872f2881b2f2"
+  digest = "1:0c6d0df813996e4b7bfd40eb2f0671755159576e0b38263babeef1ee7bbfe4d0"
   name = "github.com/docker/go-connections"
   packages = [
     "nat",
@@ -234,7 +212,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:eb8f1b1913bffd6e788deee9fe4ba3a4d83267aff6045d3be33105e35ece290b"
+  digest = "1:8d9247519c7cce3720ec913acc3a8d593ba04690ffd83b3b3a4d08f662c2d6b3"
   name = "github.com/docker/spdystream"
   packages = [
     ".",
@@ -252,15 +230,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:d612f023556888f38ccbaf22cde164f88a23619d5877fcd34a707c6b021ae6da"
-  name = "github.com/elazarl/go-bindata-assetfs"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "30f82fa23fd844bd5bb1e5f216db87fd77b5eb43"
-  version = "v1.0.0"
-
-[[projects]]
-  digest = "1:aab9e95808c688b75757e520e59c48eb954991693dfc5441f0e87d1f9cb8b7bb"
+  digest = "1:3267a1e17bf240decf62c364e861d79e68b52b5804d63b510b0baed70b9a6aee"
   name = "github.com/emicklei/go-restful"
   packages = [
     ".",
@@ -279,15 +249,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:27e00683ae7700cf7b286011dcd6ace672d542d236590dcc51bd10669cfb3366"
-  name = "github.com/emicklei/go-restful-swagger12"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "dcef7f55730566d41eae5db10e7d6981829720f6"
-  version = "1.0.1"
-
-[[projects]]
-  digest = "1:b498b36dbb2b306d1c5205ee5236c9e60352be8f9eea9bf08186723a9f75b4f3"
+  digest = "1:85b82e47d3bacb3125fbcb321b828f6c1c1e9afc307166dae6b6342b66aa427c"
   name = "github.com/emirpasic/gods"
   packages = [
     "containers",
@@ -308,6 +270,14 @@
   pruneopts = "NUT"
   revision = "72bf35d0ff611848c1dc9df0f976c81192392fa5"
   version = "v4.1.0"
+
+[[projects]]
+  digest = "1:aa3ed0a71c4e66e4ae6486bf97a3f4cab28edc78df2e50c5ad01dc7d91604b88"
+  name = "github.com/fatih/structs"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "4966fc68f5b7593aafa6cbbba2d65ec6e1416047"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -382,7 +352,7 @@
   version = "v0.18.0"
 
 [[projects]]
-  digest = "1:513691cf6809d4fa2482469adb88aba530f96a5c4a9c68a09a0786519b07c24a"
+  digest = "1:589fc282fd63dd84be3c91d87feaaa67a969612ba1ca33b911755fd95f460358"
   name = "github.com/go-redis/redis"
   packages = [
     ".",
@@ -414,17 +384,33 @@
   version = "v1.6.15"
 
 [[projects]]
-  digest = "1:37234906013da82d4c05666262eda5bdec8f736bafa7d4ec1fb3314e965b476f"
+  digest = "1:3b878cddad697b48929214a1bbd46d1cd411e79855fa502f0d33f7a30c2f882c"
+  name = "github.com/gocraft/dbr"
+  packages = [
+    ".",
+    "dialect",
+  ]
+  pruneopts = "NUT"
+  revision = "a0fd650918f6287ffe111d1c7b66bb755ff3be4a"
+
+[[projects]]
+  digest = "1:f1631663db3b95aec6a1610560b33ede5e70011b0e8cad87b110016a6fbfc2db"
   name = "github.com/gogo/protobuf"
   packages = [
-    "gogoproto",
     "proto",
-    "protoc-gen-gogo/descriptor",
     "sortkeys",
   ]
   pruneopts = "NUT"
   revision = "ba06b47c162d49f2af050fb4c75bcbc86a159d5c"
   version = "v1.2.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:4cd45b97f006fcd976470886b5fe97f59494e0f7b8e626059500cb8ace0e4e73"
+  name = "github.com/golang/example"
+  packages = ["stringutil"]
+  pruneopts = "NUT"
+  revision = "46695d81d1fae905a270fb7db8a4d11a334562fe"
 
 [[projects]]
   branch = "master"
@@ -443,7 +429,7 @@
   revision = "5b532d6fd5efaf7fa130d4e859a2fde0fc3a9e1b"
 
 [[projects]]
-  digest = "1:2d0636a8c490d2272dd725db26f74a537111b99b9dbdda0d8b98febe63702aa4"
+  digest = "1:a8b59d8995b50db3b206d9160817e00aace183e456cb60abf5157de16d12e3c9"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -465,6 +451,14 @@
   revision = "4030bb1f1f0c35b30ca7009e9ebd06849dd45306"
 
 [[projects]]
+  digest = "1:a63cff6b5d8b95638bfe300385d93b2a6d9d687734b863da8e09dc834510a690"
+  name = "github.com/google/go-querystring"
+  packages = ["query"]
+  pruneopts = "NUT"
+  revision = "44c6ddd0a2342c386950e880b658017258da92fc"
+  version = "v1.0.0"
+
+[[projects]]
   branch = "master"
   digest = "1:52c5834e2bebac9030c97cc0798ac11c3aa8a39f098aeb419f142533da6cd3cc"
   name = "github.com/google/gofuzz"
@@ -481,7 +475,7 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:06a7dadb7b760767341ffb6c8d377238d68a1226f2b21b5d497d2e3f6ecf6b4e"
+  digest = "1:add738701bd5b2b985c0c37011092c57218bdc46caf1e682a73dc210ad36b03f"
   name = "github.com/googleapis/gnostic"
   packages = [
     "OpenAPIv2",
@@ -510,7 +504,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a86d65bc23eea505cd9139178e4d889733928fe165c7a008f41eaab039edf9df"
+  digest = "1:790debb569e0ca4a39c168cae515a5f6b353229ca351c0b4208ef6964934aaed"
   name = "github.com/gregjones/httpcache"
   packages = [
     ".",
@@ -518,14 +512,6 @@
   ]
   pruneopts = "NUT"
   revision = "3befbb6ad0cc97d4c25d851e9528915809e1a22f"
-
-[[projects]]
-  digest = "1:5872c7f130f62fc34bfda20babad36be6309c00b5c9207717f7cd2a51536fff4"
-  name = "github.com/grpc-ecosystem/go-grpc-prometheus"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "c225b8c3b01faf2899099b768856a9e916e5087b"
-  version = "v1.2.0"
 
 [[projects]]
   digest = "1:f499d582d00ecc9744962e23ef8f271cb85e0d63014a99527b0ed66b618a24f0"
@@ -555,7 +541,7 @@
   version = "v0.5.1"
 
 [[projects]]
-  digest = "1:41933d387bfa3eaa6a82647914ed7044f7b8355764c24fb920892bc8c03ef0c3"
+  digest = "1:e4d4b786065b1879481dcfa5da9886f40fde00d6ab7dadea53d6d7dc943c4792"
   name = "github.com/hpcloud/tail"
   packages = [
     ".",
@@ -601,22 +587,6 @@
   revision = "3eca13d6893afd7ecabe15f4445f5d2872a1b012"
 
 [[projects]]
-  digest = "1:2ddfc1382a659966038282873c9e33e7694fa503130d445e97c4fdc3b8c5db66"
-  name = "github.com/jinzhu/gorm"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "472c70caa40267cb89fd8facb07fe6454b578626"
-  version = "v1.9.2"
-
-[[projects]]
-  branch = "master"
-  digest = "1:802f75230c29108e787d40679f9bf5da1a5673eaf5c10eb89afd993e18972909"
-  name = "github.com/jinzhu/inflection"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "04140366298a54a039076d798123ffa108fff46c"
-
-[[projects]]
   digest = "1:da62aa6632d04e080b8a8b85a59ed9ed1550842a0099a55f3ae3a20d02a3745a"
   name = "github.com/joho/godotenv"
   packages = ["."]
@@ -642,7 +612,7 @@
 
 [[projects]]
   branch = "kubesphere"
-  digest = "1:d73bdba7430fe5491bdcb463166389a7467f1cab2ac902c8d12f93890278a5b6"
+  digest = "1:7bcdcd306f2dccd6d8e0e25d861de0ce94b93b0971604c879afeaad8f5439a11"
   name = "github.com/kiali/kiali"
   packages = [
     "business",
@@ -681,7 +651,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c9258bacbb5c016d8eb7154c656cdc3cbec688ce74d57d5d2c35d3b33f5c7cb0"
+  digest = "1:da3896234af34d707626fa39b1402cd480908966354a792c503486c4f5ef4de7"
   name = "github.com/knative/pkg"
   packages = [
     "apis/istio",
@@ -715,7 +685,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:68a59bc3410e2fd7b5341057d54ec3aedb5c4aff7d0c59b72ced7d5fe6b1b92c"
+  digest = "1:11728f1747eea824b5d8194f85b5a7c0af7be4487be66645604e8302967e54b1"
   name = "github.com/kubernetes-sigs/application"
   packages = [
     "pkg/apis/app/v1beta1",
@@ -730,7 +700,7 @@
   revision = "4ead7f1b87048b7717b3e474a21fdc07e6bce636"
 
 [[projects]]
-  digest = "1:4f784610ff34c0bc3918cf0bd83d083957c192c83a255e4aeab9c731ceb3ea6f"
+  digest = "1:f97290db0238bf4d6394b527daa18391a80b5592f3db8d991f2013f70f64bd46"
   name = "github.com/kubesphere/s2ioperator"
   packages = [
     "pkg/apis/devops/v1alpha1",
@@ -744,8 +714,16 @@
     "pkg/client/listers/devops/v1alpha1",
   ]
   pruneopts = "NUT"
-  revision = "65a4c52a74d3f3b2b1f7f3b888134a26c07ea920"
-  version = "v0.0.9"
+  revision = "dc48c60d3ba316d8533688b556555567f9c78d51"
+  version = "v0.0.8"
+
+[[projects]]
+  digest = "1:a0c81030b65e467a7128668f24707beeca9812a9b1ed38c6d5db5b967da4e3b8"
+  name = "github.com/kubesphere/sonargo"
+  packages = ["sonar"]
+  pruneopts = "NUT"
+  revision = "313ae64d680ed14ef12e806ab0dd3777240e908d"
+  version = "v0.0.2"
 
 [[projects]]
   branch = "master"
@@ -756,7 +734,7 @@
   revision = "cd47fb39b79f867c6e4e5cd39cf7abd799f71670"
 
 [[projects]]
-  digest = "1:7e8a4473ed7155b5a3e4b0c692c0407d8d242e878d067d4adb9530b077f6f4e5"
+  digest = "1:3a12648ef8bab4b7310adf715fe4d74fc1d52eb81f1df6e9fcb168770ffdbd6e"
   name = "github.com/lucas-clemente/quic-go"
   packages = [
     ".",
@@ -785,7 +763,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:df495c9184b4e6cbb9d55652236dbcbe72c65a1c8b6469da50722628cea474e7"
+  digest = "1:0b14bf0c424137a702e793fe3570f41320cc3b8495d124e279a4c362c57f214b"
   name = "github.com/mailru/easyjson"
   packages = [
     "buffer",
@@ -812,7 +790,7 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:1499e521c77de0395b3b4136c9b65712f8cc3e12bcd1c4c397cdd0f73d458bdc"
+  digest = "1:0a36dc212d1b91a38b435accb11764fe6506c503cc6b75a014b4fd0bd9db44df"
   name = "github.com/mholt/caddy"
   packages = [
     ".",
@@ -899,14 +877,6 @@
   version = "1.0.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:1604410fccff1fa79d0978bf9271d52d9ea1c8c06618d5c624dabba9cfe9cc83"
-  name = "github.com/munnerz/goautoneg"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "2ae31c8b6b30d2f4c8100c20d527b571e9c433bb"
-
-[[projects]]
   digest = "1:93bfc0a09815fa2b1269c4e065e2591a9eac2c93bc78ccd6f73612ecb4bad1e7"
   name = "github.com/naoina/go-stringutil"
   packages = ["."]
@@ -915,7 +885,7 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:26b3fcffe42d2ef2076af3a8321c8c39db44ff1f46aac3be20a9b64a46328928"
+  digest = "1:9cd0478666845c9fb37ce8458c8b455d73c0a74d1e4c7603be298d9e28df83a1"
   name = "github.com/naoina/toml"
   packages = [
     ".",
@@ -926,7 +896,7 @@
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:3c46171ee5eee66086897e1efca67b84bf552b1f80039d421068c90684868194"
+  digest = "1:a84acfd5bc2d90ec8d9e0c2f2728aa8f2a33512f1247a099be4330ef9b926094"
   name = "github.com/onsi/ginkgo"
   packages = [
     ".",
@@ -953,7 +923,7 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:01797bb0a7bd98751c65dff3461b9f948e3be09c443d179468781720326b09fe"
+  digest = "1:ad29fb22a545681b5b5d0e07bc9fe20cbdaf3f954ffcad361017f3e34ac6b4ce"
   name = "github.com/onsi/gomega"
   packages = [
     ".",
@@ -984,7 +954,7 @@
   version = "v1.0.0-rc1"
 
 [[projects]]
-  digest = "1:cf7a1da29bb5ad81a30d8f13a97de4b45c7c78f1f7a0f5651ce35bf3bf88ff2b"
+  digest = "1:290add25d7ce226bce0d6880f38c4fbb7129346827a71f37293143cf9dade289"
   name = "github.com/openshift/api"
   packages = [
     "apps/v1",
@@ -1043,7 +1013,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:e411054f54a332ecadd5fe5a4a68d092f36583e554037587da86da298cffc72d"
+  digest = "1:a6b0f01bc76800f17cb666c82e1dde9f219fa35cd6989a351a9f0ef8a5a7cbd6"
   name = "github.com/prometheus/client_golang"
   packages = [
     "api",
@@ -1058,14 +1028,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2d5cd61daa5565187e1d96bae64dbbc6080dacf741448e9629c64fd93203b0d4"
+  digest = "1:0f37e09b3e92aaeda5991581311f8dbf38944b36a3edec61cc2d1991f527554a"
   name = "github.com/prometheus/client_model"
   packages = ["go"]
   pruneopts = "NUT"
   revision = "fd36f4220a901265f90734c3183c5f0c91daa0b8"
 
 [[projects]]
-  digest = "1:4e776079b966091d3e6e12ed2aaf728bea5cd1175ef88bb654e03adbf5d4f5d3"
+  digest = "1:718e954e70b5f876b6bf756173ddc35603be265423e8d80661b1882cb1bd9a91"
   name = "github.com/prometheus/common"
   packages = [
     "expfmt",
@@ -1078,7 +1048,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:612e0e6b31740c56ca06dcc7a58ef57379190bcc9eb7f7ec7698ef480fddf1da"
+  digest = "1:2aa721eb10a93c6216e8b864b42e78c20f787aa5b11010f8cfba5f7a8891f13f"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
@@ -1091,7 +1061,7 @@
   revision = "e56f2e22fc761e82a34aca553f6725e2aff4fe6c"
 
 [[projects]]
-  digest = "1:e09ada96a5a41deda4748b1659cc8953961799e798aea557257b56baee4ecaf3"
+  digest = "1:9e5d599747d9210d7dee1d10efe147f344f99f9521bb3c6d557ab65f4c2cf4ef"
   name = "github.com/rogpeppe/go-internal"
   packages = [
     "modfile",
@@ -1119,7 +1089,23 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:90cf76d709ce9b057e7d75bd245bf7c1242d21ba4f908fb22c7a2a96d1dcc0ca"
+  branch = "master"
+  digest = "1:7d62418b0a0e438a72444d7bc4bd7f5c066acfbdf20dfa9e75edc64fe8540621"
+  name = "github.com/sony/sonyflake"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "6d5bd61810093eae37d7d605d0cbdd845969b5b2"
+
+[[projects]]
+  digest = "1:7aa2c655b92b09fc47c7c69b629dcacdca2a7a3bf1837d69d04f96b5c3ff8454"
+  name = "github.com/speps/go-hashids"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "ad304c6ede07ca1f915c30a5510c45860aa165a7"
+  version = "v2.0.0"
+
+[[projects]]
+  digest = "1:d0af1fc7035b6d64dfbe4af440d8c70e593ea44e60284d98b74787db004a7452"
   name = "github.com/spf13/afero"
   packages = [
     ".",
@@ -1130,7 +1116,7 @@
   version = "v1.2.1"
 
 [[projects]]
-  digest = "1:343d44e06621142ab09ae0c76c1799104cdfddd3ffb445d78b1adf8dc3ffaf3d"
+  digest = "1:2c3b60fc961b7ddca4336bb7bb39146cb73ea2ad73d4afc6b4ffea05571e712a"
   name = "github.com/spf13/cobra"
   packages = ["."]
   pruneopts = "NUT"
@@ -1146,7 +1132,7 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:89fd77d603a74a6540d60067debad9397865bf040955d907362c95d364baeba6"
+  digest = "1:8c262fc0329de35cbb1f1208ea1990446e0ea265171aafd523189ab9c587433b"
   name = "github.com/src-d/gcfg"
   packages = [
     ".",
@@ -1167,7 +1153,7 @@
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:4fec2fe9ce617252d634de83ca8dd5f9c7c391637540896542c80ab63f071f51"
+  digest = "1:5f1187480cbc19150e63c774ed8007e7e64c1cb919a5e9ff7b0a0e5e1900775e"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
@@ -1186,7 +1172,7 @@
   version = "v0.2.1"
 
 [[projects]]
-  digest = "1:4ec126f1327fe6b348ccf2d4974c38ccf2628b10ad30be7b3be53f483db85149"
+  digest = "1:6ae48b637ad9c325f1eeb116f1780cc310fe93d524bc8a2eb78a350f21a35dff"
   name = "github.com/xenolf/lego"
   packages = [
     "acme",
@@ -1227,7 +1213,7 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:85674ac609b704fd4e9f463553b6ffc3a3527a993ae0ba550eb56beaabdfe094"
+  digest = "1:244145848a183fe658a95c682d379142595c79733d854a7d4076fa72fb1b9eb8"
   name = "go.uber.org/zap"
   packages = [
     ".",
@@ -1243,7 +1229,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a364cbf471c6403d39967b18ce1c11fb0d1e9a05a4aa66d5656cd45383f95ebe"
+  digest = "1:5cbcf748cfe80e3837b99eb98c37498c0eb4183b35c28659696731ead7a4dd5f"
   name = "golang.org/x/crypto"
   packages = [
     "cast5",
@@ -1272,7 +1258,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9e020aa9eceba512e9c0a67f415f15657961088dbf8442359a0ef957f46372e6"
+  digest = "1:4ef584461a8ab7d5e5883daca745b525450fe886a6839e583fbe24b65af527f1"
   name = "golang.org/x/net"
   packages = [
     "bpf",
@@ -1288,19 +1274,16 @@
     "internal/iana",
     "internal/socket",
     "internal/socks",
-    "internal/timeseries",
     "ipv4",
     "ipv6",
     "proxy",
-    "trace",
-    "websocket",
   ]
   pruneopts = "NUT"
   revision = "9f648a60d9775ef5c977e7669d1673a7a67bef33"
 
 [[projects]]
   branch = "master"
-  digest = "1:17ee74a4d9b6078611784b873cdbfe91892d2c73052c430724e66fcc015b6c7b"
+  digest = "1:cd20b2392f53dd5a6b3aff0ac551d02fae60274c673bf2b885e9a3ddadff5c4f"
   name = "golang.org/x/oauth2"
   packages = [
     ".",
@@ -1314,7 +1297,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a64cdf903b3f6c7496d32d8eee29604facb0e20fc022e3e69d6950d0917cafa5"
+  digest = "1:a243573e9643276548ac3219e2243ccb7b3abce72d3fe442170a0dbf64a997a2"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -1325,7 +1308,7 @@
   revision = "fead79001313d15903fb4605b4a1b781532cd93e"
 
 [[projects]]
-  digest = "1:2c4e3b27329379d7b5f889038b48086140ea60708fb92e4b19d6a775926ea30b"
+  digest = "1:0ebfea43f83a5127e01acb49438dffeb32416312c3b73fa87c7fa6e39f7e03bc"
   name = "golang.org/x/text"
   packages = [
     "collate",
@@ -1370,7 +1353,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e46d8e20161401a9cf8765dfa428494a3492a0b56fe114156b7da792bf41ba78"
+  digest = "1:8f1c06104804a7f5dda99effae51188e8d7bf28900a4e8ef3e4b198cc3406f7e"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -1390,7 +1373,7 @@
   revision = "8b67d361bba210f5fbb3c1a0fc121e0847b10b57"
 
 [[projects]]
-  digest = "1:55c735e000d1eef22b3c2f3226447489bafa33f0159dfece150279d2f9e25f7c"
+  digest = "1:faa5e95fa65f513292bea81c0baa5b8697e3a4c04b77a968327d9b73bfa9e8e0"
   name = "google.golang.org/appengine"
   packages = [
     ".",
@@ -1408,56 +1391,6 @@
   pruneopts = "NUT"
   revision = "e9657d882bb81064595ca3b56cbe2546bbabf7b1"
   version = "v1.4.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:c3076e7defee87de1236f1814beb588f40a75544c60121e6eb38b3b3721783e2"
-  name = "google.golang.org/genproto"
-  packages = ["googleapis/rpc/status"]
-  pruneopts = "NUT"
-  revision = "d1146b9035b912113a38af3b138eb2af567b2c67"
-
-[[projects]]
-  digest = "1:2c81be55b52bfd8479b143a947f919055da25c3460f3a2c17819834af238050f"
-  name = "google.golang.org/grpc"
-  packages = [
-    ".",
-    "balancer",
-    "balancer/base",
-    "balancer/roundrobin",
-    "binarylog/grpc_binarylog_v1",
-    "codes",
-    "connectivity",
-    "credentials",
-    "credentials/internal",
-    "encoding",
-    "encoding/proto",
-    "grpclog",
-    "health/grpc_health_v1",
-    "internal",
-    "internal/backoff",
-    "internal/balancerload",
-    "internal/binarylog",
-    "internal/channelz",
-    "internal/envconfig",
-    "internal/grpcrand",
-    "internal/grpcsync",
-    "internal/syscall",
-    "internal/transport",
-    "keepalive",
-    "metadata",
-    "naming",
-    "peer",
-    "resolver",
-    "resolver/dns",
-    "resolver/passthrough",
-    "stats",
-    "status",
-    "tap",
-  ]
-  pruneopts = "NUT"
-  revision = "236199dd5f8031d698fb64091194aecd1c3895b2"
-  version = "v1.20.0"
 
 [[projects]]
   digest = "1:797db40073a8a1d30cc43864b6190372f2fca7af38b1cf1532e4e92a8283e075"
@@ -1501,7 +1434,7 @@
   version = "v2.1"
 
 [[projects]]
-  digest = "1:d5547d77e1c9ca9850f3d868d29eed275742611eeae2b99bcd8a1f18f368b6e8"
+  digest = "1:1d8471ac1b112254af183f50adb0f41309cb1f83926befb09b7238357e90041c"
   name = "gopkg.in/square/go-jose.v2"
   packages = [
     ".",
@@ -1514,7 +1447,7 @@
   version = "v2.3.0"
 
 [[projects]]
-  digest = "1:1cf1388ec8c73b7ecc711d9f279ab631ea0a6964d1ccc32809a6be90c33fa2a0"
+  digest = "1:3a27ea3585e1517381a8a9f26dbbc1b02f646ffcf1f58db4c4713c3ad7ae7117"
   name = "gopkg.in/src-d/go-billy.v4"
   packages = [
     ".",
@@ -1528,7 +1461,7 @@
   version = "v4.3.0"
 
 [[projects]]
-  digest = "1:bcee186946d33b2e3befed808ee6ffe73387345807187e51790e3e148b5344c2"
+  digest = "1:388a60e173d00bf4256826ac6773a55ba384033e06b6593a89e4e4e402d208ec"
   name = "gopkg.in/src-d/go-git.v4"
   packages = [
     ".",
@@ -1602,7 +1535,7 @@
   version = "v2.2.2"
 
 [[projects]]
-  digest = "1:0ae5137dc94a40cd72fe4fcdf9db0c119d2d63df04af5958cfd514a2a21b3988"
+  digest = "1:54a81502271a4e19f45dabc7ac58b6ba06513c0fff6f1ce9c555bde0e5061113"
   name = "k8s.io/api"
   packages = [
     "admission/v1beta1",
@@ -1644,7 +1577,7 @@
   version = "kubernetes-1.13.1"
 
 [[projects]]
-  digest = "1:09949d3a2ceff9874863e6dd454f553696fdfac4a8d35b931cc7fd8556f7b5ca"
+  digest = "1:62a3fc47167844f281a867f4a23a0d11aa3b944005d72271f2f3f560f98a28ca"
   name = "k8s.io/apiextensions-apiserver"
   packages = [
     "pkg/apis/apiextensions",
@@ -1659,7 +1592,7 @@
   version = "kubernetes-1.13.1"
 
 [[projects]]
-  digest = "1:f6e4a3a03d63bf822c7445496fddc417ba1bb5fb9bad2eb658a2f4bab103cb0a"
+  digest = "1:7040b3db74b73ed260ed93b5cd74c40d5476887f97f8b916014e2949410b3128"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/equality",
@@ -1708,7 +1641,6 @@
     "pkg/util/validation",
     "pkg/util/validation/field",
     "pkg/util/wait",
-    "pkg/util/waitgroup",
     "pkg/util/yaml",
     "pkg/version",
     "pkg/watch",
@@ -1721,113 +1653,24 @@
   version = "kubernetes-1.13.1"
 
 [[projects]]
-  digest = "1:d2e5c7bc82676f4988f9c028e14614cd332633b240fe5b3ccd9f140dc88d58e6"
+  digest = "1:6df68d1649c3ddb4d47c6ad78f260582d5e55a4a9653c6e30fbd35822fff0699"
   name = "k8s.io/apiserver"
   packages = [
-    "pkg/admission",
-    "pkg/admission/configuration",
-    "pkg/admission/initializer",
-    "pkg/admission/metrics",
-    "pkg/admission/plugin/initialization",
-    "pkg/admission/plugin/namespace/lifecycle",
-    "pkg/admission/plugin/webhook/config",
-    "pkg/admission/plugin/webhook/config/apis/webhookadmission",
-    "pkg/admission/plugin/webhook/config/apis/webhookadmission/v1alpha1",
-    "pkg/admission/plugin/webhook/errors",
-    "pkg/admission/plugin/webhook/generic",
-    "pkg/admission/plugin/webhook/mutating",
-    "pkg/admission/plugin/webhook/namespace",
-    "pkg/admission/plugin/webhook/request",
-    "pkg/admission/plugin/webhook/rules",
-    "pkg/admission/plugin/webhook/util",
-    "pkg/admission/plugin/webhook/validating",
-    "pkg/apis/apiserver",
-    "pkg/apis/apiserver/install",
-    "pkg/apis/apiserver/v1alpha1",
     "pkg/apis/audit",
-    "pkg/apis/audit/install",
-    "pkg/apis/audit/v1",
-    "pkg/apis/audit/v1alpha1",
-    "pkg/apis/audit/v1beta1",
-    "pkg/apis/audit/validation",
-    "pkg/audit",
-    "pkg/audit/event",
-    "pkg/audit/policy",
-    "pkg/audit/util",
     "pkg/authentication/authenticator",
-    "pkg/authentication/authenticatorfactory",
-    "pkg/authentication/group",
-    "pkg/authentication/request/anonymous",
-    "pkg/authentication/request/bearertoken",
-    "pkg/authentication/request/headerrequest",
-    "pkg/authentication/request/union",
-    "pkg/authentication/request/websocket",
-    "pkg/authentication/request/x509",
     "pkg/authentication/serviceaccount",
-    "pkg/authentication/token/cache",
-    "pkg/authentication/token/tokenfile",
     "pkg/authentication/user",
     "pkg/authorization/authorizer",
-    "pkg/authorization/authorizerfactory",
-    "pkg/authorization/path",
-    "pkg/authorization/union",
-    "pkg/endpoints",
-    "pkg/endpoints/discovery",
-    "pkg/endpoints/filters",
-    "pkg/endpoints/handlers",
-    "pkg/endpoints/handlers/negotiation",
-    "pkg/endpoints/handlers/responsewriters",
-    "pkg/endpoints/metrics",
-    "pkg/endpoints/openapi",
     "pkg/endpoints/request",
     "pkg/features",
-    "pkg/registry/generic",
-    "pkg/registry/generic/registry",
-    "pkg/registry/rest",
-    "pkg/server",
-    "pkg/server/filters",
-    "pkg/server/healthz",
-    "pkg/server/httplog",
-    "pkg/server/mux",
-    "pkg/server/options",
-    "pkg/server/resourceconfig",
-    "pkg/server/routes",
-    "pkg/server/routes/data/swagger",
-    "pkg/server/storage",
-    "pkg/storage",
-    "pkg/storage/cacher",
-    "pkg/storage/errors",
-    "pkg/storage/etcd",
-    "pkg/storage/etcd/metrics",
-    "pkg/storage/etcd3",
-    "pkg/storage/names",
-    "pkg/storage/storagebackend",
-    "pkg/storage/storagebackend/factory",
-    "pkg/storage/value",
-    "pkg/util/dryrun",
     "pkg/util/feature",
-    "pkg/util/flag",
-    "pkg/util/flushwriter",
-    "pkg/util/logs",
-    "pkg/util/openapi",
-    "pkg/util/trace",
-    "pkg/util/webhook",
-    "pkg/util/wsstream",
-    "plugin/pkg/audit/buffered",
-    "plugin/pkg/audit/dynamic",
-    "plugin/pkg/audit/dynamic/enforced",
-    "plugin/pkg/audit/log",
-    "plugin/pkg/audit/truncate",
-    "plugin/pkg/audit/webhook",
-    "plugin/pkg/authenticator/token/webhook",
-    "plugin/pkg/authorizer/webhook",
   ]
   pruneopts = "NUT"
   revision = "3ccfe8365421eb08e334b195786a2973460741d8"
   version = "kubernetes-1.13.1"
 
 [[projects]]
-  digest = "1:174302b5262613baa367ba2fca9f07870b24b41b6ab9e0cdf22798febfa7ee80"
+  digest = "1:356ad4c66929ad8d8abcf058b68a2c05a55912a53dfad819bc2b6d141a2d618e"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1984,7 +1827,7 @@
   version = "kubernetes-1.13.1"
 
 [[projects]]
-  digest = "1:dc1ae99dcab96913d81ae970b1f7a7411a54199b14bfb17a7e86f9a56979c720"
+  digest = "1:8f29fd4c578cae70e2e1673656e19e9bae4896c72b458f42b824dfe03d7ea3b2"
   name = "k8s.io/code-generator"
   packages = [
     "cmd/client-gen",
@@ -2003,7 +1846,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:462e6076bc1fde8da364901873fde3a9e66160d853d766b797a657d66e4b2cc4"
+  digest = "1:8279bfdd72fb8eb68d03b5a43acbff4109a79725a2717d98e90f15915eefdbd0"
   name = "k8s.io/gengo"
   packages = [
     "args",
@@ -2019,33 +1862,23 @@
   revision = "b90029ef6cd877cb3f422d75b3a07707e3aac6b7"
 
 [[projects]]
-  digest = "1:c263611800c3a97991dbcf9d3bc4de390f6224aaa8ca0a7226a9d734f65a416a"
+  digest = "1:9cc257b3c9ff6a0158c9c661ab6eebda1fe8a4a4453cd5c4044dc9a2ebfb992b"
   name = "k8s.io/klog"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "71442cd4037d612096940ceb0f3fec3f7fff66e0"
-  version = "v0.2.0"
+  revision = "a5bc97fbc634d635061f3146511332c7e313a55a"
+  version = "v0.1.0"
 
 [[projects]]
-  digest = "1:feb0fe266bb2fbe900b607b5a86fe4f3c6fceaa0fa08fb9ae8d188e120a6d06e"
+  branch = "master"
+  digest = "1:03a96603922fc1f6895ae083e1e16d943b55ef0656b56965351bd87e7d90485f"
   name = "k8s.io/kube-openapi"
-  packages = [
-    "cmd/openapi-gen",
-    "cmd/openapi-gen/args",
-    "pkg/builder",
-    "pkg/common",
-    "pkg/generators",
-    "pkg/generators/rules",
-    "pkg/handler",
-    "pkg/util",
-    "pkg/util/proto",
-    "pkg/util/sets",
-  ]
+  packages = ["pkg/util/proto"]
   pruneopts = "NUT"
-  revision = "fd29a9f2f42946ceb3fbd87518e0f2f4343da168"
+  revision = "15615b16d372105f0c69ff47dfe7402926a65aaa"
 
 [[projects]]
-  digest = "1:bcd717e6ecfb776e37d1b1e08ff63ae3c85b7f5c1d25041123747a9a9a8645cf"
+  digest = "1:ccabade367cf9af9bd03efe88d4c091b33e227bc4fb256ceff1b5e15211d4cea"
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/api/legacyscheme",
@@ -2083,7 +1916,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5b4cb4a89696f012fc162d3fcb16aecfecf979ce794cf29c44822c9aa9f4319e"
+  digest = "1:68a6a10a10ee5f93fc5e0c63c8857165b472a0c45b6e482342d8d25b17837bd5"
   name = "k8s.io/utils"
   packages = ["pointer"]
   pruneopts = "NUT"
@@ -2098,7 +1931,7 @@
   revision = "4ead7f1b87048b7717b3e474a21fdc07e6bce636"
 
 [[projects]]
-  digest = "1:2615e1a9c8353287333b45fd7334173bc6c8dac525ae5710dc2e3c80b7b3e6ba"
+  digest = "1:41e0826a5968b00d321ba7981be205017ca2bea433a8f85c01e2b3f4c62445eb"
   name = "sigs.k8s.io/controller-runtime"
   packages = [
     "pkg/cache",
@@ -2143,7 +1976,7 @@
   version = "v0.1.10"
 
 [[projects]]
-  digest = "1:992675a6714d511089a0b7ffb7063d36e5423089cda610642de7a0cfbbf673ab"
+  digest = "1:170bb3fef81543de085fe9bcdfc97c8677563151b5badba8f6e8ebeabb73a310"
   name = "sigs.k8s.io/controller-tools"
   packages = [
     "cmd/controller-gen",
@@ -2162,7 +1995,7 @@
   version = "v0.1.9"
 
 [[projects]]
-  digest = "1:237ad09ac561f3e3a2a2e9f3fee85fea98c0f41f381ac80562b05bdaa9fe89c6"
+  digest = "1:a9ab998a89bcd0ee9a5cf293943b79e2f889aa6a587b4f2ca3de113340e20418"
   name = "sigs.k8s.io/testing_frameworks"
   packages = [
     "integration",
@@ -2185,18 +2018,24 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/PuerkitoBio/goquery",
+    "github.com/asaskevich/govalidator",
+    "github.com/beevik/etree",
     "github.com/dgrijalva/jwt-go",
     "github.com/docker/docker/api/types",
     "github.com/docker/docker/client",
     "github.com/emicklei/go-restful",
     "github.com/emicklei/go-restful-openapi",
+    "github.com/fatih/structs",
     "github.com/go-ldap/ldap",
     "github.com/go-openapi/spec",
     "github.com/go-redis/redis",
     "github.com/go-sql-driver/mysql",
+    "github.com/gocraft/dbr",
+    "github.com/gocraft/dbr/dialect",
+    "github.com/golang/example/stringutil",
     "github.com/golang/glog",
     "github.com/google/uuid",
-    "github.com/jinzhu/gorm",
     "github.com/json-iterator/go",
     "github.com/kiali/kiali/config",
     "github.com/kiali/kiali/handlers",
@@ -2209,14 +2048,19 @@
     "github.com/kubesphere/s2ioperator/pkg/apis/devops/v1alpha1",
     "github.com/kubesphere/s2ioperator/pkg/client/clientset/versioned",
     "github.com/kubesphere/s2ioperator/pkg/client/informers/externalversions",
+    "github.com/kubesphere/sonargo/sonar",
     "github.com/mholt/caddy",
     "github.com/mholt/caddy/caddy/caddymain",
     "github.com/mholt/caddy/caddyhttp/httpserver",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
+    "github.com/sony/sonyflake",
+    "github.com/speps/go-hashids",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
+    "github.com/stretchr/testify/assert",
     "golang.org/x/net/context",
+    "golang.org/x/net/html",
     "gopkg.in/igm/sockjs-go.v2/sockjs",
     "gopkg.in/src-d/go-git.v4",
     "gopkg.in/src-d/go-git.v4/config",
@@ -2224,7 +2068,6 @@
     "gopkg.in/src-d/go-git.v4/storage/memory",
     "gopkg.in/yaml.v2",
     "k8s.io/api/apps/v1",
-    "k8s.io/api/apps/v1beta2",
     "k8s.io/api/batch/v1",
     "k8s.io/api/batch/v1beta1",
     "k8s.io/api/core/v1",
@@ -2235,9 +2078,7 @@
     "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions",
     "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset",
     "k8s.io/apimachinery/pkg/api/errors",
-    "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/api/resource",
-    "k8s.io/apimachinery/pkg/apis/meta/internalversion",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/fields",
     "k8s.io/apimachinery/pkg/labels",
@@ -2245,7 +2086,6 @@
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
-    "k8s.io/apimachinery/pkg/util/intstr",
     "k8s.io/apimachinery/pkg/util/json",
     "k8s.io/apimachinery/pkg/util/net",
     "k8s.io/apimachinery/pkg/util/runtime",
@@ -2254,11 +2094,7 @@
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/apiserver/pkg/authentication/user",
     "k8s.io/apiserver/pkg/authorization/authorizer",
-    "k8s.io/apiserver/pkg/endpoints/openapi",
     "k8s.io/apiserver/pkg/endpoints/request",
-    "k8s.io/apiserver/pkg/registry/rest",
-    "k8s.io/apiserver/pkg/server",
-    "k8s.io/apiserver/pkg/server/options",
     "k8s.io/client-go/discovery",
     "k8s.io/client-go/discovery/fake",
     "k8s.io/client-go/informers",
@@ -2282,9 +2118,6 @@
     "k8s.io/gengo/examples/deepcopy-gen/generators",
     "k8s.io/gengo/examples/defaulter-gen/generators",
     "k8s.io/klog",
-    "k8s.io/kube-openapi/cmd/openapi-gen",
-    "k8s.io/kube-openapi/pkg/builder",
-    "k8s.io/kube-openapi/pkg/common",
     "k8s.io/kubernetes/pkg/apis/core",
     "k8s.io/kubernetes/pkg/controller",
     "k8s.io/kubernetes/pkg/util/metrics",
