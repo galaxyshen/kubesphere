@@ -18,125 +18,226 @@
 package openpitrix
 
 import (
-	"bytes"
-	"encoding/json"
-	"flag"
+	"context"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"sync"
+	"k8s.io/klog"
+	"openpitrix.io/openpitrix/pkg/manager"
+	"openpitrix.io/openpitrix/pkg/pb"
+	"openpitrix.io/openpitrix/pkg/sender"
+	"openpitrix.io/openpitrix/pkg/util/ctxutil"
+	"strconv"
+	"strings"
 )
 
-var (
-	openpitrixAPIServer  string
-	openpitrixProxyToken string
-	once                 sync.Once
-	c                    client
+const (
+	KubernetesProvider = "kubernetes"
+	Unknown            = "-"
+	DeploySuffix       = "-Deployment"
+	DaemonSuffix       = "-DaemonSet"
+	StateSuffix        = "-StatefulSet"
+	SystemUsername     = "system"
+	SystemUserPath     = ":system"
 )
 
-type RunTime struct {
-	RuntimeId         string `json:"runtime_id"`
-	RuntimeUrl        string `json:"runtime_url"`
-	Name              string `json:"name"`
-	Provider          string `json:"provider"`
-	Zone              string `json:"zone"`
-	RuntimeCredential string `json:"runtime_credential"`
+type OpenPitrixClient struct {
+	runtime     pb.RuntimeManagerClient
+	cluster     pb.ClusterManagerClient
+	app         pb.AppManagerClient
+	repo        pb.RepoManagerClient
+	category    pb.CategoryManagerClient
+	attachment  pb.AttachmentManagerClient
+	repoIndexer pb.RepoIndexerClient
 }
 
-type Interface interface {
-	CreateRuntime(runtime *RunTime) error
-	DeleteRuntime(runtimeId string) error
+func parseToHostPort(endpoint string) (string, int, error) {
+	args := strings.Split(endpoint, ":")
+	if len(args) != 2 {
+		return "", 0, fmt.Errorf("invalid server host: %s", endpoint)
+	}
+	host := args[0]
+	port, err := strconv.Atoi(args[1])
+	if err != nil {
+		return "", 0, err
+	}
+	return host, port, nil
 }
 
-type Error struct {
-	status  int
-	message string
+func newRuntimeManagerClient(endpoint string) (pb.RuntimeManagerClient, error) {
+	host, port, err := parseToHostPort(endpoint)
+	conn, err := manager.NewClient(host, port)
+	if err != nil {
+		return nil, err
+	}
+	return pb.NewRuntimeManagerClient(conn), nil
+}
+func newClusterManagerClient(endpoint string) (pb.ClusterManagerClient, error) {
+	host, port, err := parseToHostPort(endpoint)
+	conn, err := manager.NewClient(host, port)
+	if err != nil {
+		return nil, err
+	}
+	return pb.NewClusterManagerClient(conn), nil
+}
+func newCategoryManagerClient(endpoint string) (pb.CategoryManagerClient, error) {
+	host, port, err := parseToHostPort(endpoint)
+	conn, err := manager.NewClient(host, port)
+	if err != nil {
+		return nil, err
+	}
+	return pb.NewCategoryManagerClient(conn), nil
 }
 
-func (e Error) Error() string {
-	return fmt.Sprintf("status: %d,message: %s", e.status, e.message)
+func newAttachmentManagerClient(endpoint string) (pb.AttachmentManagerClient, error) {
+	host, port, err := parseToHostPort(endpoint)
+	conn, err := manager.NewClient(host, port)
+	if err != nil {
+		return nil, err
+	}
+	return pb.NewAttachmentManagerClient(conn), nil
 }
 
-type client struct {
-	client http.Client
+func newRepoManagerClient(endpoint string) (pb.RepoManagerClient, error) {
+	host, port, err := parseToHostPort(endpoint)
+	conn, err := manager.NewClient(host, port)
+	if err != nil {
+		return nil, err
+	}
+	return pb.NewRepoManagerClient(conn), nil
 }
 
-func init() {
-	flag.StringVar(&openpitrixAPIServer, "openpitrix-api-server", "http://openpitrix-api-gateway.openpitrix-system.svc:9100", "openpitrix api server")
-	flag.StringVar(&openpitrixProxyToken, "openpitrix-proxy-token", "", "openpitrix proxy token")
+func newRepoIndexer(endpoint string) (pb.RepoIndexerClient, error) {
+	host, port, err := parseToHostPort(endpoint)
+	conn, err := manager.NewClient(host, port)
+	if err != nil {
+		return nil, err
+	}
+	return pb.NewRepoIndexerClient(conn), nil
 }
 
-func Client() Interface {
-	once.Do(func() {
-		c = client{client: http.Client{}}
-	})
-	return c
+func newAppManagerClient(endpoint string) (pb.AppManagerClient, error) {
+	host, port, err := parseToHostPort(endpoint)
+	conn, err := manager.NewClient(host, port)
+	if err != nil {
+		return nil, err
+	}
+	return pb.NewAppManagerClient(conn), nil
 }
 
-func (c client) CreateRuntime(runtime *RunTime) error {
+func NewOpenPitrixClient(options *OpenPitrixOptions) (*OpenPitrixClient, error) {
 
-	data, err := json.Marshal(runtime)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/v1/runtimes", openpitrixAPIServer), bytes.NewReader(data))
+	runtimeMangerClient, err := newRuntimeManagerClient(options.RuntimeManagerEndpoint)
 
 	if err != nil {
-		return err
+		klog.Error(err)
+		return nil, err
 	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", openpitrixProxyToken)
 
-	log.Println(req.Method, req.URL, openpitrixProxyToken, string(data))
-	resp, err := c.client.Do(req)
+	clusterManagerClient, err := newClusterManagerClient(options.ClusterManagerEndpoint)
 
 	if err != nil {
-		return err
+		klog.Error(err)
+		return nil, err
 	}
-	defer resp.Body.Close()
-	data, err = ioutil.ReadAll(resp.Body)
+
+	repoManagerClient, err := newRepoManagerClient(options.RepoManagerEndpoint)
 
 	if err != nil {
-		return err
+		klog.Error(err)
+		return nil, err
 	}
 
-	if resp.StatusCode > http.StatusOK {
-		return Error{resp.StatusCode, string(data)}
+	repoIndexerClient, err := newRepoIndexer(options.RepoIndexerEndpoint)
+
+	if err != nil {
+		klog.Error(err)
+		return nil, err
 	}
 
-	return nil
+	appManagerClient, err := newAppManagerClient(options.AppManagerEndpoint)
+
+	if err != nil {
+		klog.Error(err)
+		return nil, err
+	}
+
+	categoryManagerClient, err := newCategoryManagerClient(options.CategoryManagerEndpoint)
+
+	if err != nil {
+		klog.Error(err)
+		return nil, err
+	}
+
+	attachmentManagerClient, err := newAttachmentManagerClient(options.AttachmentManagerEndpoint)
+
+	if err != nil {
+		klog.Error(err)
+		return nil, err
+	}
+
+	client := OpenPitrixClient{
+		runtime:     runtimeMangerClient,
+		cluster:     clusterManagerClient,
+		repo:        repoManagerClient,
+		app:         appManagerClient,
+		category:    categoryManagerClient,
+		attachment:  attachmentManagerClient,
+		repoIndexer: repoIndexerClient,
+	}
+
+	return &client, nil
+}
+func (c *OpenPitrixClient) Runtime() pb.RuntimeManagerClient {
+	return c.runtime
+}
+func (c *OpenPitrixClient) App() pb.AppManagerClient {
+	return c.app
+}
+func (c *OpenPitrixClient) Cluster() pb.ClusterManagerClient {
+	return c.cluster
+}
+func (c *OpenPitrixClient) Category() pb.CategoryManagerClient {
+	return c.category
 }
 
-func (c client) DeleteRuntime(runtimeId string) error {
-	data := []byte(fmt.Sprintf(`{"runtime_id":"%s"}`, runtimeId))
-	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/v1/runtimes", openpitrixAPIServer), bytes.NewReader(data))
+func (c *OpenPitrixClient) Repo() pb.RepoManagerClient {
+	return c.repo
+}
 
-	if err != nil {
-		return err
+func (c *OpenPitrixClient) RepoIndexer() pb.RepoIndexerClient {
+	return c.repoIndexer
+}
+
+func (c *OpenPitrixClient) Attachment() pb.AttachmentManagerClient {
+	return c.attachment
+}
+
+func SystemContext() context.Context {
+	ctx := context.Background()
+	ctx = ctxutil.ContextWithSender(ctx, sender.New(SystemUsername, SystemUserPath, ""))
+	return ctx
+}
+func ContextWithUsername(username string) context.Context {
+	ctx := context.Background()
+	if username == "" {
+		username = SystemUsername
 	}
+	ctx = ctxutil.ContextWithSender(ctx, sender.New(username, SystemUserPath, ""))
+	return ctx
+}
 
-	req.Header.Add("Authorization", openpitrixProxyToken)
-	if err != nil {
-		return err
+func IsNotFound(err error) bool {
+	if strings.Contains(err.Error(), "not exist") {
+		return true
 	}
-	log.Println(req.Method, req.URL)
-	resp, err := c.client.Do(req)
-
-	if err != nil {
-		return err
+	if strings.Contains(err.Error(), "not found") {
+		return true
 	}
-	defer resp.Body.Close()
-	data, err = ioutil.ReadAll(resp.Body)
+	return false
+}
 
-	if err != nil {
-		return err
+func IsDeleted(err error) bool {
+	if strings.Contains(err.Error(), "is [deleted]") {
+		return true
 	}
-
-	if resp.StatusCode > http.StatusOK {
-		return Error{resp.StatusCode, string(data)}
-	}
-
-	return nil
+	return false
 }

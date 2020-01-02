@@ -22,32 +22,8 @@ import (
 	fb "kubesphere.io/kubesphere/pkg/simple/client/fluentbit"
 )
 
-type FluentbitCRDResult struct {
-	Status int              `json:"status"`
-	CRD    fb.FluentBitSpec `json:"CRD,omitempty"`
-}
-
-type FluentbitCRDDeleteResult struct {
-	Status int `json:"status"`
-}
-
-type FluentbitSettingsResult struct {
-	Status int    `json:"status"`
-	Enable string `json:"Enable,omitempty"`
-}
-
-type FluentbitFilter struct {
-	Type       string `json:"type"`
-	Field      string `json:"field"`
-	Expression string `json:"expression"`
-}
-
-type FluentbitFiltersResult struct {
-	Status  int               `json:"status"`
-	Filters []FluentbitFilter `json:"filters,omitempty"`
-}
-
 type FluentbitOutputsResult struct {
-	Status  int               `json:"status"`
-	Outputs []fb.OutputPlugin `json:"outputs,omitempty"`
+	Status  int               `json:"status" description:"response status"`
+	Error   string            `json:"error,omitempty" description:"debug information"`
+	Outputs []fb.OutputPlugin `json:"outputs,omitempty" description:"array of fluent bit output plugins"`
 }

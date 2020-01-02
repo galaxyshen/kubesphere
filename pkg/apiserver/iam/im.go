@@ -19,22 +19,19 @@ package iam
 
 import (
 	"fmt"
-	"kubesphere.io/kubesphere/pkg/params"
+	"k8s.io/klog"
+	"kubesphere.io/kubesphere/pkg/server/params"
 	"net/http"
-	"regexp"
+	"net/mail"
 	"strings"
 
 	"github.com/emicklei/go-restful"
 	"github.com/go-ldap/ldap"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"kubesphere.io/kubesphere/pkg/constants"
-	"kubesphere.io/kubesphere/pkg/errors"
 	"kubesphere.io/kubesphere/pkg/models"
 	"kubesphere.io/kubesphere/pkg/models/iam"
-)
-
-const (
-	emailRegex = "^[a-z0-9]+([._\\-]*[a-z0-9])*@([a-z0-9]+[-a-z0-9]*[a-z0-9]+.){1,63}[a-z0-9]+$"
+	"kubesphere.io/kubesphere/pkg/server/errors"
 )
 
 func CreateUser(req *restful.Request, resp *restful.Response) {
@@ -43,22 +40,30 @@ func CreateUser(req *restful.Request, resp *restful.Response) {
 	err := req.ReadEntity(&user)
 
 	if err != nil {
+		klog.Info(err)
 		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
 		return
 	}
 
 	if user.Username == "" {
-		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(fmt.Errorf("invalid username")))
+		err = fmt.Errorf("invalid username: %s", user.Username)
+		klog.Info(err, user.Username)
+		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
 		return
 	}
 
-	if !regexp.MustCompile(emailRegex).MatchString(user.Email) {
-		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(fmt.Errorf("invalid email")))
+	// Parses a single RFC 5322 address, e.g. "Barry Gibbs <bg@example.com>"
+	if _, err = mail.ParseAddress(user.Email); err != nil {
+		err = fmt.Errorf("invalid email: %s", user.Email)
+		klog.Info(err, user.Email)
+		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
 		return
 	}
 
 	if len(user.Password) < 6 {
-		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(fmt.Errorf("invalid password")))
+		err = fmt.Errorf("invalid password")
+		klog.Info(err)
+		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
 		return
 	}
 
@@ -66,9 +71,11 @@ func CreateUser(req *restful.Request, resp *restful.Response) {
 
 	if err != nil {
 		if ldap.IsErrorWithCode(err, ldap.LDAPResultEntryAlreadyExists) {
+			klog.Info(err)
 			resp.WriteHeaderAndEntity(http.StatusConflict, errors.Wrap(err))
 			return
 		}
+		klog.Info(err)
 		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
 		return
 	}
@@ -77,18 +84,21 @@ func CreateUser(req *restful.Request, resp *restful.Response) {
 }
 
 func DeleteUser(req *restful.Request, resp *restful.Response) {
-	username := req.PathParameter("name")
+	username := req.PathParameter("user")
 
 	operator := req.HeaderParameter(constants.UserNameHeader)
 
 	if operator == username {
-		resp.WriteHeaderAndEntity(http.StatusForbidden, errors.Wrap(fmt.Errorf("cannot delete yourself")))
+		err := fmt.Errorf("cannot delete yourself")
+		klog.Info(err)
+		resp.WriteHeaderAndEntity(http.StatusForbidden, errors.Wrap(err))
 		return
 	}
 
 	err := iam.DeleteUser(username)
 
 	if err != nil {
+		klog.Info(err)
 		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
 		return
 	}
@@ -98,29 +108,36 @@ func DeleteUser(req *restful.Request, resp *restful.Response) {
 
 func UpdateUser(req *restful.Request, resp *restful.Response) {
 
-	usernameInPath := req.PathParameter("name")
+	usernameInPath := req.PathParameter("user")
 	usernameInHeader := req.HeaderParameter(constants.UserNameHeader)
 	var user models.User
 
 	err := req.ReadEntity(&user)
 
 	if err != nil {
+		klog.Info(err)
 		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
 		return
 	}
 
 	if usernameInPath != user.Username {
-		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(fmt.Errorf("the name of user (%s) does not match the name on the URL (%s)", user.Username, usernameInPath)))
+		err = fmt.Errorf("the name of user (%s) does not match the name on the URL (%s)", user.Username, usernameInPath)
+		klog.Info(err)
+		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
 		return
 	}
 
-	if !regexp.MustCompile(emailRegex).MatchString(user.Email) {
-		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(fmt.Errorf("invalid email")))
+	if _, err = mail.ParseAddress(user.Email); err != nil {
+		err = fmt.Errorf("invalid email: %s", user.Email)
+		klog.Info(err)
+		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
 		return
 	}
 
 	if user.Password != "" && len(user.Password) < 6 {
-		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(fmt.Errorf("invalid password")))
+		err = fmt.Errorf("invalid password")
+		klog.Info(err)
+		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
 		return
 	}
 
@@ -128,21 +145,36 @@ func UpdateUser(req *restful.Request, resp *restful.Response) {
 	if usernameInHeader == user.Username && user.Password != "" {
 		isUserManager, err := isUserManager(usernameInHeader)
 		if err != nil {
-			resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
+			klog.Error(err)
+			resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
 			return
 		}
 		if !isUserManager {
 			_, err = iam.Login(usernameInHeader, user.CurrentPassword, "")
 		}
 		if err != nil {
-			resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(fmt.Errorf("incorrect current password")))
+			err = fmt.Errorf("incorrect current password")
+			klog.Info(err)
+			resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
 			return
 		}
+	}
+
+	if usernameInHeader == user.Username {
+		// change cluster role by self is not permitted
+		user.ClusterRole = ""
 	}
 
 	result, err := iam.UpdateUser(&user)
 
 	if err != nil {
+		if ldap.IsErrorWithCode(err, ldap.LDAPResultEntryAlreadyExists) {
+			klog.Info(err)
+			resp.WriteHeaderAndEntity(http.StatusConflict, errors.Wrap(err))
+			return
+		}
+
+		klog.Error(err)
 		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
 		return
 	}
@@ -161,11 +193,12 @@ func isUserManager(username string) (bool, error) {
 	return false, nil
 }
 
-func UserLoginLog(req *restful.Request, resp *restful.Response) {
-	username := req.PathParameter("name")
+func UserLoginLogs(req *restful.Request, resp *restful.Response) {
+	username := req.PathParameter("user")
 	logs, err := iam.LoginLog(username)
 
 	if err != nil {
+		klog.Error(err)
 		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
 		return
 	}
@@ -187,14 +220,16 @@ func UserLoginLog(req *restful.Request, resp *restful.Response) {
 
 func DescribeUser(req *restful.Request, resp *restful.Response) {
 
-	username := req.PathParameter("username")
+	username := req.PathParameter("user")
 
 	user, err := iam.DescribeUser(username)
 
 	if err != nil {
 		if ldap.IsErrorWithCode(err, ldap.LDAPResultNoSuchObject) {
+			klog.Info(err)
 			resp.WriteHeaderAndEntity(http.StatusNotFound, errors.Wrap(err))
 		} else {
+			klog.Error(err)
 			resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
 		}
 		return
@@ -203,6 +238,7 @@ func DescribeUser(req *restful.Request, resp *restful.Response) {
 	clusterRole, err := iam.GetUserClusterRole(username)
 
 	if err != nil {
+		klog.Error(err)
 		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
 		return
 	}
@@ -212,6 +248,7 @@ func DescribeUser(req *restful.Request, resp *restful.Response) {
 	clusterRules, err := iam.GetUserClusterSimpleRules(username)
 
 	if err != nil {
+		klog.Error(err)
 		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
 		return
 	}
@@ -234,6 +271,7 @@ func Precheck(req *restful.Request, resp *restful.Response) {
 	exist, err := iam.UserCreateCheck(check)
 
 	if err != nil {
+		klog.Error(err)
 		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
 		return
 	}
@@ -254,6 +292,7 @@ func ListUsers(req *restful.Request, resp *restful.Response) {
 	reverse := params.ParseReverse(req)
 
 	if err != nil {
+		klog.Info(err)
 		resp.WriteHeaderAndEntity(http.StatusBadRequest, errors.Wrap(err))
 		return
 	}
@@ -261,6 +300,7 @@ func ListUsers(req *restful.Request, resp *restful.Response) {
 	users, err := iam.ListUsers(conditions, orderBy, reverse, limit, offset)
 
 	if err != nil {
+		klog.Error(err)
 		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
 		return
 	}

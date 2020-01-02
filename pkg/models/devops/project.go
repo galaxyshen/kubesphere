@@ -14,11 +14,12 @@ limitations under the License.
 package devops
 
 import (
+	"kubesphere.io/kubesphere/pkg/api/devops/v1alpha2"
 	"kubesphere.io/kubesphere/pkg/utils/idutils"
 	"time"
 )
 
-var DevOpsProjectColumns = GetColumnsFromStruct(&DevOpsProject{})
+var DevOpsProjectColumns = GetColumnsFromStruct(&v1alpha2.DevOpsProject{})
 
 const (
 	DevOpsProjectTableName         = "project"
@@ -31,20 +32,8 @@ const (
 	DevOpsProjectCreateTimeColumn  = "project.create_time"
 )
 
-type DevOpsProject struct {
-	ProjectId   string    `json:"project_id" db:"project_id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description,omitempty"`
-	Creator     string    `json:"creator"`
-	CreateTime  time.Time `json:"create_time"`
-	Status      string    `json:"status"`
-	Visibility  string    `json:"visibility,omitempty"`
-	Extra       string    `json:"extra,omitempty"`
-	Workspace   string    `json:"workspace"`
-}
-
-func NewDevOpsProject(name, description, creator, extra, workspace string) *DevOpsProject {
-	return &DevOpsProject{
+func NewDevOpsProject(name, description, creator, extra, workspace string) *v1alpha2.DevOpsProject {
+	return &v1alpha2.DevOpsProject{
 		ProjectId:   idutils.GetUuid(DevOpsProjectPrefix),
 		Name:        name,
 		Description: description,

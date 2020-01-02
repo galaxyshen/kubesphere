@@ -23,6 +23,12 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+const (
+	ResourceKindS2iRun     = "S2iRun"
+	ResourceSingularS2iRun = "s2irun"
+	ResourcePluralS2iRun   = "s2iruns"
+)
+
 // S2iRunSpec defines the desired state of S2iRun
 type S2iRunSpec struct {
 	//BuilderName specify the name of s2ibuilder, required
@@ -33,6 +39,10 @@ type S2iRunSpec struct {
 	SecondsAfterFinished int32 `json:"secondsAfterFinished,omitempty"`
 	//NewTag override the default tag in its s2ibuilder, image name cannot be changed.
 	NewTag string `json:"newTag,omitempty"`
+	//NewRevisionId override the default NewRevisionId in its s2ibuilder.
+	NewRevisionId string `json:"newRevisionId,omitempty"`
+	//NewSourceURL is used to download new binary artifacts
+	NewSourceURL string `json:"newSourceURL,omitempty"`
 }
 
 // S2iRunStatus defines the observed state of S2iRun
@@ -51,8 +61,50 @@ type S2iRunStatus struct {
 	LogURL string `json:"logURL,omitempty"`
 	//KubernetesJobName is the job name in k8s
 	KubernetesJobName string `json:"kubernetesJobName,omitempty"`
+
+	// S2i build result info.
+	S2iBuildResult *S2iBuildResult `json:"s2iBuildResult,omitempty"`
+	// S2i build source info.
+	S2iBuildSource *S2iBuildSource `json:"s2iBuildSource,omitempty"`
+}
+
+type S2iBuildResult struct {
 	//ImageName is the name of artifact
 	ImageName string `json:"imageName,omitempty"`
+	//The size in bytes of the image
+	ImageSize int64 `json:"imageSize,omitempty"`
+	// Image ID.
+	ImageID string `json:"imageID,omitempty"`
+	// Image created time.
+	ImageCreated string `json:"imageCreated,omitempty"`
+	// image tags.
+	ImageRepoTags []string `json:"imageRepoTags,omitempty"`
+	// Command for pull image.
+	CommandPull string `json:"commandPull,omitempty"`
+}
+
+type S2iBuildSource struct {
+	// SourceURL is  url of the codes such as https://github.com/a/b.git
+	SourceUrl string `json:"sourceUrl,omitempty"`
+	// The RevisionId is a branch name or a SHA-1 hash of every important thing about the commit
+	RevisionId string `json:"revisionId,omitempty"`
+	// Binary file Name
+	BinaryName string `json:"binaryName,omitempty"`
+	// Binary file Size
+	BinarySize uint64 `json:"binarySize,omitempty"`
+
+	// // BuilderImage describes which image is used for building the result images.
+	BuilderImage string `json:"builderImage,omitempty"`
+	// Description is a result image description label. The default is no
+	// description.
+	Description string `json:"description,omitempty"`
+
+	// CommitID represents an arbitrary extended object reference in Git as SHA-1
+	CommitID string `json:"commitID,omitempty"`
+	// CommitterName contains the name of the committer
+	CommitterName string `json:"committerName,omitempty"`
+	// CommitterEmail contains the e-mail of the committer
+	CommitterEmail string `json:"committerEmail,omitempty"`
 }
 
 // +genclient
@@ -66,7 +118,7 @@ type S2iRunStatus struct {
 // +kubebuilder:printcolumn:name="K8sJobName",type="string",JSONPath=".status.kubernetesJobName"
 // +kubebuilder:printcolumn:name="StartTime",type="date",JSONPath=".status.startTime"
 // +kubebuilder:printcolumn:name="CompletionTime",type="date",JSONPath=".status.completionTime"
-// +kubebuilder:printcolumn:name="ImageName",type="string",JSONPath=".status.imageName"
+// +kubebuilder:printcolumn:name="ImageName",type="string",JSONPath=".status.s2iBuildResult.imageName"
 type S2iRun struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

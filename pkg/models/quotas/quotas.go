@@ -19,14 +19,14 @@
 package quotas
 
 import (
-	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/klog"
 	"kubesphere.io/kubesphere/pkg/informers"
 	"kubesphere.io/kubesphere/pkg/models"
 	"kubesphere.io/kubesphere/pkg/models/resources"
-	"kubesphere.io/kubesphere/pkg/params"
+	"kubesphere.io/kubesphere/pkg/server/params"
 )
 
 const (
@@ -37,18 +37,36 @@ const (
 	servicesKey               = "count/services"
 	statefulsetsKey           = "count/statefulsets.apps"
 	persistentvolumeclaimsKey = "persistentvolumeclaims"
-	storageClassesKey         = "count/storageClass"
-	namespaceKey              = "count/namespace"
 	jobsKey                   = "count/jobs.batch"
 	cronJobsKey               = "count/cronjobs.batch"
+	s2iBuilders               = "count/s2ibuilders.devops.kubesphere.io"
 )
 
+type NamespacedResourceQuota struct {
+	Namespace string `json:"namespace,omitempty"`
+
+	Data struct {
+		v1.ResourceQuotaStatus
+
+		// quota left status, do the math on the side, cause it's
+		// a lot easier with go-client library
+		Left v1.ResourceList `json:"left,omitempty"`
+	} `json:"data,omitempty"`
+}
+
 var (
-	resourceMap = map[string]string{daemonsetsKey: resources.DaemonSets, deploymentsKey: resources.Deployments,
-		ingressKey: resources.Ingresses, servicesKey: resources.Services,
-		statefulsetsKey: resources.StatefulSets, persistentvolumeclaimsKey: resources.PersistentVolumeClaims, podsKey: resources.Pods,
-		namespaceKey: resources.Namespaces, storageClassesKey: resources.StorageClasses,
-		jobsKey: resources.Jobs, cronJobsKey: resources.CronJobs}
+	resourceMap = map[string]string{
+		daemonsetsKey:             resources.DaemonSets,
+		deploymentsKey:            resources.Deployments,
+		ingressKey:                resources.Ingresses,
+		servicesKey:               resources.Services,
+		statefulsetsKey:           resources.StatefulSets,
+		persistentvolumeclaimsKey: resources.PersistentVolumeClaims,
+		podsKey:                   resources.Pods,
+		jobsKey:                   resources.Jobs,
+		cronJobsKey:               resources.CronJobs,
+		s2iBuilders:               resources.S2iBuilders,
+	}
 )
 
 func getUsage(namespace, resource string) (int, error) {
@@ -61,12 +79,14 @@ func getUsage(namespace, resource string) (int, error) {
 	}
 
 	if err != nil {
+		klog.Error(err)
 		return 0, err
 	}
 
 	return result.TotalCount, nil
 }
 
+// no one use this api anymore， marked as deprecated
 func GetClusterQuotas() (*models.ResourceQuota, error) {
 
 	quota := v1.ResourceQuotaStatus{Hard: make(v1.ResourceList), Used: make(v1.ResourceList)}
@@ -85,33 +105,53 @@ func GetClusterQuotas() (*models.ResourceQuota, error) {
 
 }
 
-func GetNamespaceQuotas(namespace string) (*models.ResourceQuota, error) {
+func GetNamespaceQuotas(namespace string) (*NamespacedResourceQuota, error) {
 	quota, err := getNamespaceResourceQuota(namespace)
 	if err != nil {
-		glog.Error(err)
+		klog.Error(err)
 		return nil, err
 	}
 	if quota == nil {
 		quota = &v1.ResourceQuotaStatus{Hard: make(v1.ResourceList), Used: make(v1.ResourceList)}
 	}
 
-	for k, v := range resourceMap {
-		if _, exist := quota.Used[v1.ResourceName(k)]; !exist {
-			if k == namespaceKey || k == storageClassesKey {
-				continue
+	var resourceQuotaLeft = v1.ResourceList{}
+
+	for key, hardLimit := range quota.Hard {
+		if used, ok := quota.Used[key]; ok {
+			left := hardLimit.DeepCopy()
+			left.Sub(used)
+			if hardLimit.Cmp(used) < 0 {
+				left = resource.MustParse("0")
 			}
 
-			used, err := getUsage(namespace, v)
-			if err != nil {
-				return nil, err
-			}
-			var quantity resource.Quantity
-			quantity.Set(int64(used))
-			quota.Used[v1.ResourceName(k)] = quantity
+			resourceQuotaLeft[key] = left
 		}
 	}
 
-	return &models.ResourceQuota{Namespace: namespace, Data: *quota}, nil
+	// add extra quota usage, cause user may not specify them
+	for key, val := range resourceMap {
+		// only add them when they don't exist in quotastatus
+		if _, ok := quota.Used[v1.ResourceName(key)]; !ok {
+			used, err := getUsage(namespace, val)
+			if err != nil {
+				klog.Error(err)
+				return nil, err
+			}
+
+			quota.Used[v1.ResourceName(key)] = *(resource.NewQuantity(int64(used), resource.DecimalSI))
+		}
+	}
+
+	var result = NamespacedResourceQuota{
+		Namespace: namespace,
+	}
+	result.Data.Hard = quota.Hard
+	result.Data.Used = quota.Used
+	result.Data.Left = resourceQuotaLeft
+
+	return &result, nil
+
 }
 
 func updateNamespaceQuota(tmpResourceList, resourceList v1.ResourceList) {
@@ -127,14 +167,16 @@ func updateNamespaceQuota(tmpResourceList, resourceList v1.ResourceList) {
 			tmpResourceList[res] = usage
 		}
 	}
-
 }
 
 func getNamespaceResourceQuota(namespace string) (*v1.ResourceQuotaStatus, error) {
 	resourceQuotaLister := informers.SharedInformerFactory().Core().V1().ResourceQuotas().Lister()
 	quotaList, err := resourceQuotaLister.ResourceQuotas(namespace).List(labels.Everything())
-	if err != nil || len(quotaList) == 0 {
+	if err != nil {
+		klog.Error(err)
 		return nil, err
+	} else if len(quotaList) == 0 {
+		return nil, nil
 	}
 
 	quotaStatus := v1.ResourceQuotaStatus{Hard: make(v1.ResourceList), Used: make(v1.ResourceList)}

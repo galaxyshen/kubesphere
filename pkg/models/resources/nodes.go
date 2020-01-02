@@ -18,9 +18,10 @@
 package resources
 
 import (
+	"fmt"
 	"kubesphere.io/kubesphere/pkg/constants"
 	"kubesphere.io/kubesphere/pkg/informers"
-	"kubesphere.io/kubesphere/pkg/params"
+	"kubesphere.io/kubesphere/pkg/server/params"
 	"kubesphere.io/kubesphere/pkg/utils/sliceutil"
 	"sort"
 	"strings"
@@ -36,6 +37,40 @@ func (*nodeSearcher) get(namespace, name string) (interface{}, error) {
 	return informers.SharedInformerFactory().Core().V1().Nodes().Lister().Get(name)
 }
 
+func getNodeStatus(node *v1.Node) string {
+	if node.Spec.Unschedulable {
+		return StatusUnschedulable
+	}
+	for _, condition := range node.Status.Conditions {
+		if isUnhealthStatus(condition) {
+			return StatusWarning
+		}
+	}
+
+	return StatusRunning
+}
+
+const NodeConfigOK v1.NodeConditionType = "ConfigOK"
+const NodeKubeletReady v1.NodeConditionType = "KubeletReady"
+
+var expectedConditions = map[v1.NodeConditionType]v1.ConditionStatus{
+	v1.NodeMemoryPressure:     v1.ConditionFalse,
+	v1.NodeDiskPressure:       v1.ConditionFalse,
+	v1.NodePIDPressure:        v1.ConditionFalse,
+	v1.NodeNetworkUnavailable: v1.ConditionFalse,
+	NodeConfigOK:              v1.ConditionTrue,
+	NodeKubeletReady:          v1.ConditionTrue,
+	v1.NodeReady:              v1.ConditionTrue,
+}
+
+func isUnhealthStatus(condition v1.NodeCondition) bool {
+	expectedStatus := expectedConditions[condition.Type]
+	if expectedStatus != "" && condition.Status != expectedStatus {
+		return true
+	}
+	return false
+}
+
 // exactly Match
 func (*nodeSearcher) match(match map[string]string, item *v1.Node) bool {
 	for k, v := range match {
@@ -45,12 +80,22 @@ func (*nodeSearcher) match(match map[string]string, item *v1.Node) bool {
 			if !sliceutil.HasString(names, item.Name) {
 				return false
 			}
+		case Role:
+			labelKey := fmt.Sprintf("node-role.kubernetes.io/%s", v)
+			if _, ok := item.Labels[labelKey]; !ok {
+				return false
+			}
+		case Status:
+			if getNodeStatus(item) != v {
+				return false
+			}
 		case Keyword:
 			if !strings.Contains(item.Name, v) && !searchFuzzy(item.Labels, "", v) && !searchFuzzy(item.Annotations, "", v) {
 				return false
 			}
 		default:
-			if item.Labels[k] != v {
+			// label not exist or value not equal
+			if val, ok := item.Labels[k]; !ok || val != v {
 				return false
 			}
 		}
@@ -80,7 +125,7 @@ func (*nodeSearcher) fuzzy(fuzzy map[string]string, item *v1.Node) bool {
 				return false
 			}
 		default:
-			if !searchFuzzy(item.Labels, k, v) && !searchFuzzy(item.Annotations, k, v) {
+			if !searchFuzzy(item.Labels, k, v) {
 				return false
 			}
 		}

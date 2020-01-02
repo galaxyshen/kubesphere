@@ -21,18 +21,18 @@ import (
 	"github.com/emicklei/go-restful"
 	"k8s.io/api/rbac/v1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
-	"kubesphere.io/kubesphere/pkg/params"
+	"kubesphere.io/kubesphere/pkg/server/params"
 	"net/http"
 	"sort"
 
-	"kubesphere.io/kubesphere/pkg/errors"
 	"kubesphere.io/kubesphere/pkg/models/iam"
 	"kubesphere.io/kubesphere/pkg/models/iam/policy"
+	"kubesphere.io/kubesphere/pkg/server/errors"
 )
 
-type roleList struct {
-	ClusterRoles []*v1.ClusterRole `json:"clusterRole" protobuf:"bytes,2,rep,name=clusterRoles"`
-	Roles        []*v1.Role        `json:"roles" protobuf:"bytes,2,rep,name=roles"`
+type RoleList struct {
+	ClusterRoles []*v1.ClusterRole `json:"clusterRole" description:"cluster role list"`
+	Roles        []*v1.Role        `json:"roles" description:"role list"`
 }
 
 func ListRoleUsers(req *restful.Request, resp *restful.Response) {
@@ -116,7 +116,7 @@ func ListNamespaceUsers(req *restful.Request, resp *restful.Response) {
 
 func ListUserRoles(req *restful.Request, resp *restful.Response) {
 
-	username := req.PathParameter("username")
+	username := req.PathParameter("user")
 
 	roles, err := iam.GetUserRoles("", username)
 
@@ -132,7 +132,7 @@ func ListUserRoles(req *restful.Request, resp *restful.Response) {
 		return
 	}
 
-	roleList := roleList{}
+	roleList := RoleList{}
 	roleList.Roles = roles
 	roleList.ClusterRoles = clusterRoles
 

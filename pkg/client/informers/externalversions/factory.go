@@ -1,5 +1,5 @@
 /*
-Copyright The Kubernetes Authors.
+Copyright 2019 The KubeSphere authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,7 +28,9 @@ import (
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 	versioned "kubesphere.io/kubesphere/pkg/client/clientset/versioned"
+	devops "kubesphere.io/kubesphere/pkg/client/informers/externalversions/devops"
 	internalinterfaces "kubesphere.io/kubesphere/pkg/client/informers/externalversions/internalinterfaces"
+	network "kubesphere.io/kubesphere/pkg/client/informers/externalversions/network"
 	servicemesh "kubesphere.io/kubesphere/pkg/client/informers/externalversions/servicemesh"
 	tenant "kubesphere.io/kubesphere/pkg/client/informers/externalversions/tenant"
 )
@@ -173,8 +175,18 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
+	Devops() devops.Interface
+	Network() network.Interface
 	Servicemesh() servicemesh.Interface
 	Tenant() tenant.Interface
+}
+
+func (f *sharedInformerFactory) Devops() devops.Interface {
+	return devops.New(f, f.namespace, f.tweakListOptions)
+}
+
+func (f *sharedInformerFactory) Network() network.Interface {
+	return network.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Servicemesh() servicemesh.Interface {

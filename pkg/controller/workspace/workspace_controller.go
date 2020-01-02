@@ -32,6 +32,7 @@ import (
 	tenantv1alpha1 "kubesphere.io/kubesphere/pkg/apis/tenant/v1alpha1"
 	"kubesphere.io/kubesphere/pkg/constants"
 	"kubesphere.io/kubesphere/pkg/models"
+	cs "kubesphere.io/kubesphere/pkg/simple/client"
 	"kubesphere.io/kubesphere/pkg/simple/client/kubesphere"
 	"kubesphere.io/kubesphere/pkg/utils/sliceutil"
 	"reflect"
@@ -43,6 +44,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"sync"
 )
 
 const (
@@ -67,7 +69,7 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileWorkspace{Client: mgr.GetClient(), scheme: mgr.GetScheme(),
-		recorder: mgr.GetRecorder("workspace-controller"), ksclient: kubesphere.Client()}
+		recorder: mgr.GetEventRecorderFor("workspace-controller"), ksclient: cs.ClientSets().KubeSphere()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -131,9 +133,7 @@ func (r *ReconcileWorkspace) Reconcile(request reconcile.Request) (reconcile.Res
 		// The object is being deleted
 		if sliceutil.HasString(instance.ObjectMeta.Finalizers, finalizer) {
 			// our finalizer is present, so lets handle our external dependency
-			if err := r.deleteGroup(instance); err != nil {
-				// if fail to delete the external dependency here, return with error
-				// so that it can be retried
+			if err := r.deleteDevOpsProjects(instance); err != nil {
 				return reconcile.Result{}, err
 			}
 
@@ -161,10 +161,6 @@ func (r *ReconcileWorkspace) Reconcile(request reconcile.Request) (reconcile.Res
 	if err = r.createWorkspaceViewer(instance); err != nil {
 		return reconcile.Result{}, err
 	}
-
-	//if err = r.createGroup(instance); err != nil {
-	//	return reconcile.Result{}, err
-	//}
 
 	if err = r.createWorkspaceRoleBindings(instance); err != nil {
 		return reconcile.Result{}, err
@@ -327,6 +323,49 @@ func (r *ReconcileWorkspace) deleteGroup(instance *tenantv1alpha1.Workspace) err
 	return nil
 }
 
+func (r *ReconcileWorkspace) deleteDevOpsProjects(instance *tenantv1alpha1.Workspace) error {
+	if _, err := cs.ClientSets().Devops(); err != nil {
+		// skip if devops is not enabled
+		if _, notEnabled := err.(cs.ClientSetNotEnabledError); notEnabled {
+			return nil
+		} else {
+			log.Error(err, "")
+			return err
+		}
+	}
+	var wg sync.WaitGroup
+
+	log.Info("Delete DevOps Projects")
+	for {
+		errChan := make(chan error, 10)
+		projects, err := r.ksclient.ListWorkspaceDevOpsProjects(instance.Name)
+		if err != nil {
+			log.Error(err, "Failed to Get Workspace's DevOps Projects", "ws", instance.Name)
+			return err
+		}
+		if projects.TotalCount == 0 {
+			return nil
+		}
+		for _, project := range projects.Items {
+			wg.Add(1)
+			go func(workspace, devops string) {
+				err := r.ksclient.DeleteWorkspaceDevOpsProjects(workspace, devops)
+				errChan <- err
+				wg.Done()
+			}(instance.Name, project.ProjectId)
+		}
+		wg.Wait()
+		close(errChan)
+		for err := range errChan {
+			if err != nil {
+				log.Error(err, "delete devops project error")
+				return err
+			}
+		}
+
+	}
+}
+
 func (r *ReconcileWorkspace) createWorkspaceRoleBindings(instance *tenantv1alpha1.Workspace) error {
 
 	adminRoleBinding := &rbac.ClusterRoleBinding{}
@@ -459,7 +498,7 @@ func (r *ReconcileWorkspace) bindNamespaces(instance *tenantv1alpha1.Workspace) 
 
 	nsList := &corev1.NamespaceList{}
 	options := client.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{constants.WorkspaceLabelKey: instance.Name})}
-	err := r.List(context.TODO(), &options, nsList)
+	err := r.List(context.TODO(), nsList, &options)
 
 	if err != nil {
 		log.Error(err, fmt.Sprintf("list workspace %s namespace failed", instance.Name))
@@ -526,9 +565,24 @@ func getWorkspaceAdmin(workspaceName string) *rbac.ClusterRole {
 			Resources:     []string{"workspaces", "workspaces/*"},
 		},
 		{
+			Verbs:     []string{"watch"},
+			APIGroups: []string{""},
+			Resources: []string{"namespaces"},
+		},
+		{
 			Verbs:     []string{"list"},
 			APIGroups: []string{"iam.kubesphere.io"},
 			Resources: []string{"users"},
+		},
+		{
+			Verbs:     []string{"get", "list"},
+			APIGroups: []string{"openpitrix.io"},
+			Resources: []string{"categories"},
+		},
+		{
+			Verbs:     []string{"*"},
+			APIGroups: []string{"openpitrix.io"},
+			Resources: []string{"applications", "apps", "apps/versions", "apps/events", "apps/action", "apps/audits", "repos", "repos/action", "attachments"},
 		},
 	}
 
@@ -558,6 +612,17 @@ func getWorkspaceRegular(workspaceName string) *rbac.ClusterRole {
 			ResourceNames: []string{workspaceName},
 			Resources:     []string{"workspaces/members"},
 		},
+		{
+			Verbs:     []string{"get", "list"},
+			APIGroups: []string{"openpitrix.io"},
+			Resources: []string{"apps/events", "apps/action", "apps/audits", "categories"},
+		},
+
+		{
+			Verbs:     []string{"*"},
+			APIGroups: []string{"openpitrix.io"},
+			Resources: []string{"applications", "apps", "apps/versions", "repos", "repos/action", "attachments"},
+		},
 	}
 
 	return regular
@@ -574,6 +639,16 @@ func getWorkspaceViewer(workspaceName string) *rbac.ClusterRole {
 			APIGroups:     []string{"*"},
 			ResourceNames: []string{workspaceName},
 			Resources:     []string{"workspaces", "workspaces/*"},
+		},
+		{
+			Verbs:     []string{"watch"},
+			APIGroups: []string{""},
+			Resources: []string{"namespaces"},
+		},
+		{
+			Verbs:     []string{"get", "list"},
+			APIGroups: []string{"openpitrix.io"},
+			Resources: []string{"applications", "apps", "apps/events", "apps/action", "apps/audits", "apps/versions", "repos", "categories", "attachments"},
 		},
 	}
 	return viewer

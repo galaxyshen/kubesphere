@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+*.a
 
 # Test binary, build with `go test -c`
 *.test
@@ -21,6 +22,13 @@ bin/
 
 tmp/
 
+apiserver.local.config
+
 # OSX trash
 .DS_Store
 api.json
+*.coverprofile
+cover.out
+coverage.txt
+
+kustomize/network/etcd

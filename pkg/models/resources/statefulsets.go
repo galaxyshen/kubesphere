@@ -20,7 +20,7 @@ package resources
 import (
 	"kubesphere.io/kubesphere/pkg/constants"
 	"kubesphere.io/kubesphere/pkg/informers"
-	"kubesphere.io/kubesphere/pkg/params"
+	"kubesphere.io/kubesphere/pkg/server/params"
 	"kubesphere.io/kubesphere/pkg/utils/sliceutil"
 	"sort"
 	"strings"
@@ -67,7 +67,8 @@ func (*statefulSetSearcher) match(match map[string]string, item *v1.StatefulSet)
 				return false
 			}
 		default:
-			if item.Labels[k] != v {
+			// label not exist or value not equal
+			if val, ok := item.Labels[k]; !ok || val != v {
 				return false
 			}
 		}
@@ -97,7 +98,7 @@ func (*statefulSetSearcher) fuzzy(fuzzy map[string]string, item *v1.StatefulSet)
 				return false
 			}
 		default:
-			if !searchFuzzy(item.Labels, k, v) && !searchFuzzy(item.Annotations, k, v) {
+			if !searchFuzzy(item.Labels, k, v) {
 				return false
 			}
 		}

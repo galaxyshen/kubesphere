@@ -20,24 +20,22 @@ package job
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/golang/glog"
+	"reflect"
+
 	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	batchv1informers "k8s.io/client-go/informers/batch/v1"
 	batchv1listers "k8s.io/client-go/listers/batch/v1"
-	"k8s.io/kubernetes/pkg/controller"
-	"k8s.io/kubernetes/pkg/util/metrics"
-	"reflect"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	log "k8s.io/klog"
+	"time"
 
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"time"
 )
 
 const (
@@ -49,8 +47,6 @@ const (
 	maxRetries             = 15
 	revisionsAnnotationKey = "revisions"
 )
-
-var log = logf.Log.WithName("job-controller")
 
 type JobController struct {
 	client           clientset.Interface
@@ -66,11 +62,6 @@ type JobController struct {
 }
 
 func NewJobController(jobInformer batchv1informers.JobInformer, client clientset.Interface) *JobController {
-
-	if client != nil && client.CoreV1().RESTClient().GetRateLimiter() != nil {
-		metrics.RegisterMetricAndTrackRateLimiterUsage("job_controller", client.CoreV1().RESTClient().GetRateLimiter())
-	}
-
 	v := &JobController{
 		client:           client,
 		queue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "job"),
@@ -94,20 +85,18 @@ func NewJobController(jobInformer batchv1informers.JobInformer, client clientset
 }
 
 func (v *JobController) Start(stopCh <-chan struct{}) error {
-	v.Run(5, stopCh)
-
-	return nil
+	return v.Run(5, stopCh)
 }
 
-func (v *JobController) Run(workers int, stopCh <-chan struct{}) {
+func (v *JobController) Run(workers int, stopCh <-chan struct{}) error {
 	defer utilruntime.HandleCrash()
 	defer v.queue.ShutDown()
 
 	log.Info("starting job controller")
 	defer log.Info("shutting down job controller")
 
-	if !controller.WaitForCacheSync("job-controller", stopCh, v.jobSynced) {
-		return
+	if !cache.WaitForCacheSync(stopCh, v.jobSynced) {
+		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
 	for i := 0; i < workers; i++ {
@@ -115,10 +104,11 @@ func (v *JobController) Run(workers int, stopCh <-chan struct{}) {
 	}
 
 	<-stopCh
+	return nil
 }
 
 func (v *JobController) enqueueJob(obj interface{}) {
-	key, err := controller.KeyFunc(obj)
+	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", obj, err))
 		return
@@ -173,6 +163,7 @@ func (v *JobController) syncJob(key string) error {
 
 	if err != nil {
 		log.Error(err, "make job revision failed", "namespace", namespace, "name", name)
+		return err
 	}
 
 	return nil
@@ -189,7 +180,7 @@ func (v *JobController) addJob(obj interface{}) {
 }
 
 func (v *JobController) handleErr(err error, key interface{}) {
-	if err != nil {
+	if err == nil {
 		v.queue.Forget(key)
 		return
 	}
@@ -235,7 +226,7 @@ func (v *JobController) makeRevision(job *batchv1.Job) error {
 
 	revisionsByte, err := json.Marshal(revisions)
 	if err != nil {
-		glog.Error("generate reversion string failed", err)
+		log.Error("generate reversion string failed", err)
 		return nil
 	}
 

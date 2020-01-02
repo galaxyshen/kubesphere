@@ -29,6 +29,12 @@ import (
 type RunState string
 
 const (
+	ResourceKindS2iBuilder     = "S2iBuilder"
+	ResourceSingularS2iBuilder = "s2ibuilder"
+	ResourcePluralS2iBuilder   = "s2ibuilders"
+)
+
+const (
 	NotRunning RunState = "Not Running Yet"
 	Running    RunState = "Running"
 	Successful          = "Successful"
@@ -40,6 +46,7 @@ const (
 	S2iRunLabel                      = "devops.kubesphere.io/s2ir"
 	S2irCompletedScaleAnnotations    = "devops.kubesphere.io/completedscale"
 	WorkLoadCompletedInitAnnotations = "devops.kubesphere.io/inithasbeencomplted"
+	S2iRunDoNotAutoScaleAnnotations  = "devops.kubesphere.io/donotautoscale"
 	DescriptionAnnotations           = "desc"
 )
 const (
@@ -61,43 +68,43 @@ type ProxyConfig struct {
 
 // CGroupLimits holds limits used to constrain container resources.
 type CGroupLimits struct {
-	MemoryLimitBytes int64
-	CPUShares        int64
-	CPUPeriod        int64
-	CPUQuota         int64
-	MemorySwap       int64
-	Parent           string
+	MemoryLimitBytes int64  `json:"memoryLimitBytes"`
+	CPUShares        int64  `json:"cpuShares"`
+	CPUPeriod        int64  `json:"cpuPeriod"`
+	CPUQuota         int64  `json:"cpuQuota"`
+	MemorySwap       int64  `json:"memorySwap"`
+	Parent           string `json:"parent"`
 }
 
 // VolumeSpec represents a single volume mount point.
 type VolumeSpec struct {
 	// Source is a reference to the volume source.
-	Source string
+	Source string `json:"source,omitempty"`
 	// Destination is the path to mount the volume to - absolute or relative.
-	Destination string
+	Destination string `json:"destination,omitempty"`
 	// Keep indicates if the mounted data should be kept in the final image.
-	Keep bool
+	Keep bool `json:"keep,omitempty"`
 }
 
 // DockerConfig contains the configuration for a Docker connection.
 type DockerConfig struct {
 	// Endpoint is the docker network endpoint or socket
-	Endpoint string
+	Endpoint string `json:"endPoint"`
 
 	// CertFile is the certificate file path for a TLS connection
-	CertFile string
+	CertFile string `json:"certFile"`
 
 	// KeyFile is the key file path for a TLS connection
-	KeyFile string
+	KeyFile string `json:"keyFile"`
 
 	// CAFile is the certificate authority file path for a TLS connection
-	CAFile string
+	CAFile string `json:"caFile"`
 
 	// UseTLS indicates if TLS must be used
-	UseTLS bool
+	UseTLS bool `json:"useTLS"`
 
 	// TLSVerify indicates if TLS peer must be verified
-	TLSVerify bool
+	TLSVerify bool `json:"tlsVerify"`
 }
 
 // AuthConfig is our abstraction of the Registry authorization information for whatever
@@ -106,7 +113,7 @@ type AuthConfig struct {
 	Username      string                       `json:"username,omitempty"`
 	Password      string                       `json:"password,omitempty"`
 	Email         string                       `json:"email,omitempty"`
-	ServerAddress string                       `json:"server_address,omitempty"`
+	ServerAddress string                       `json:"serverAddress,omitempty"`
 	SecretRef     *corev1.LocalObjectReference `json:"secretRef,omitempty"`
 }
 
@@ -388,14 +395,33 @@ type S2iConfig struct {
 	// AddHost Add a line to /etc/hosts for test purpose or private use in LAN. Its format is host:IP,muliple hosts can be added  by using multiple --add-host
 	AddHost []string `json:"addHost,omitempty"`
 
-	//Export Push the result image to specify image registry in tag
+	// Export Push the result image to specify image registry in tag
 	Export bool `json:"export,omitempty"`
 
-	//SourceURL is  url of the codes such as https://github.com/a/b.git
+	// SourceURL is  url of the codes such as https://github.com/a/b.git
 	SourceURL string `json:"sourceUrl"`
 
-	//GitSecretRef is the BasicAuth Secret of Git Clone
+	// IsBinaryURL explain the type of SourceURL.
+	// If it is IsBinaryURL, it will download the file directly without using git.
+	IsBinaryURL bool `json:"isBinaryURL,omitempty"`
+
+	// GitSecretRef is the BasicAuth Secret of Git Clone
 	GitSecretRef *corev1.LocalObjectReference `json:"gitSecretRef,omitempty"`
+
+	// The RevisionId is a branch name or a SHA-1 hash of every important thing about the commit
+	RevisionId string `json:"revisionId,omitempty"`
+
+	// The name of taint.
+	TaintKey string `json:"taintKey,omitempty"`
+
+	// The key of Node Affinity.
+	NodeAffinityKey string `json:"nodeAffinityKey,omitempty"`
+
+	// The values of Node Affinity.
+	NodeAffinityValues []string `json:"nodeAffinityValues,omitempty"`
+
+	// Whether output build result to status.
+	OutputBuildResult bool `json:"outputBuildResult,omitempty"`
 }
 
 type UserDefineTemplate struct {
@@ -404,7 +430,7 @@ type UserDefineTemplate struct {
 	//Parameters must use with `template`, fill some parameters which template will use
 	Parameters []Parameter `json:"parameters,omitempty"`
 	//BaseImage specify which version of this template to use
-	BaseImage string `json:"baseImage,omitempty"`
+	BuilderImage string `json:"builderImage,omitempty"`
 }
 
 // S2iBuilderSpec defines the desired state of S2iBuilder
@@ -473,9 +499,10 @@ type DockerConfigJson struct {
 type DockerConfigMap map[string]DockerConfigEntry
 
 type DockerConfigEntry struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Email    string `json:"email"`
+	Username      string `json:"username"`
+	Password      string `json:"password"`
+	Email         string `json:"email"`
+	ServerAddress string `json:"serverAddress,omitempty"`
 }
 
 func init() {

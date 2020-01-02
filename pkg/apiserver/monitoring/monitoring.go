@@ -19,194 +19,185 @@ package monitoring
 
 import (
 	"github.com/emicklei/go-restful"
+	"kubesphere.io/kubesphere/pkg/informers"
 	"kubesphere.io/kubesphere/pkg/models/metrics"
-	"kubesphere.io/kubesphere/pkg/simple/client/prometheus"
+	"net/url"
+	"strconv"
+	"strings"
 )
 
-func MonitorPod(request *restful.Request, response *restful.Response) {
-	requestParams := prometheus.ParseMonitoringRequestParams(request)
-	podName := requestParams.PodName
-	metricName := requestParams.MetricsName
-	if podName != "" {
-		// single pod single metric
-		queryType, params, nullRule := metrics.AssemblePodMetricRequestInfo(requestParams, metricName)
-		var res *metrics.FormatedMetric
-		if !nullRule {
-			metricsStr := prometheus.SendMonitoringRequest(prometheus.PrometheusEndpoint, queryType, params)
-			res = metrics.ReformatJson(metricsStr, metricName, map[string]string{metrics.MetricLevelPodName: ""})
-		}
-		response.WriteAsJson(res)
-
-	} else {
-		// multiple
-		rawMetrics := metrics.GetPodLevelMetrics(requestParams)
-		// sorting
-		sortedMetrics, maxMetricCount := metrics.Sort(requestParams.SortMetricName, requestParams.SortType, rawMetrics)
-		// paging
-		pagedMetrics := metrics.Page(requestParams.PageNum, requestParams.LimitNum, sortedMetrics, maxMetricCount)
-		response.WriteAsJson(pagedMetrics)
-	}
-}
-
-func MonitorContainer(request *restful.Request, response *restful.Response) {
-	requestParams := prometheus.ParseMonitoringRequestParams(request)
-	metricName := requestParams.MetricsName
-	if requestParams.MetricsFilter != "" {
-		rawMetrics := metrics.GetContainerLevelMetrics(requestParams)
-		// sorting
-		sortedMetrics, maxMetricCount := metrics.Sort(requestParams.SortMetricName, requestParams.SortType, rawMetrics)
-		// paging
-		pagedMetrics := metrics.Page(requestParams.PageNum, requestParams.LimitNum, sortedMetrics, maxMetricCount)
-
-		response.WriteAsJson(pagedMetrics)
-
-	} else {
-		res := metrics.MonitorContainer(requestParams, metricName)
-		response.WriteAsJson(res)
-	}
-
-}
-
-func MonitorWorkload(request *restful.Request, response *restful.Response) {
-	requestParams := prometheus.ParseMonitoringRequestParams(request)
-
-	rawMetrics := metrics.GetWorkloadLevelMetrics(requestParams)
-
-	// sorting
-	sortedMetrics, maxMetricCount := metrics.Sort(requestParams.SortMetricName, requestParams.SortType, rawMetrics)
-
-	// paging
-	pagedMetrics := metrics.Page(requestParams.PageNum, requestParams.LimitNum, sortedMetrics, maxMetricCount)
-
-	response.WriteAsJson(pagedMetrics)
-
-}
-
-func MonitorAllWorkspaces(request *restful.Request, response *restful.Response) {
-
-	requestParams := prometheus.ParseMonitoringRequestParams(request)
-
-	tp := requestParams.Tp
-	if tp == "statistics" {
-		// merge multiple metric: all-devops, all-roles, all-projects...this api is designed for admin
-		res := metrics.GetAllWorkspacesStatistics()
-		response.WriteAsJson(res)
-
-	} else if tp == "rank" {
-		rawMetrics := metrics.MonitorAllWorkspaces(requestParams)
-
-		// sorting
-		sortedMetrics, maxMetricCount := metrics.Sort(requestParams.SortMetricName, requestParams.SortType, rawMetrics)
-
-		// paging
-		pagedMetrics := metrics.Page(requestParams.PageNum, requestParams.LimitNum, sortedMetrics, maxMetricCount)
-
-		response.WriteAsJson(pagedMetrics)
-	} else {
-		rawMetrics := metrics.MonitorAllWorkspaces(requestParams)
-		response.WriteAsJson(rawMetrics)
-	}
-}
-
-func MonitorOneWorkspace(request *restful.Request, response *restful.Response) {
-	requestParams := prometheus.ParseMonitoringRequestParams(request)
-
-	tp := requestParams.Tp
-	if tp == "rank" {
-		// multiple
-		rawMetrics := metrics.GetWorkspaceLevelMetrics(requestParams)
-
-		// sorting
-		sortedMetrics, maxMetricCount := metrics.Sort(requestParams.SortMetricName, requestParams.SortType, rawMetrics)
-
-		// paging
-		pagedMetrics := metrics.Page(requestParams.PageNum, requestParams.LimitNum, sortedMetrics, maxMetricCount)
-		response.WriteAsJson(pagedMetrics)
-
-	} else if tp == "statistics" {
-		wsName := requestParams.WsName
-
-		// merge multiple metric: devops, roles, projects...
-		res := metrics.MonitorOneWorkspaceStatistics(wsName)
-		response.WriteAsJson(res)
-	} else {
-		res := metrics.GetWorkspaceLevelMetrics(requestParams)
-		response.WriteAsJson(res)
-	}
-}
-
-func MonitorNamespace(request *restful.Request, response *restful.Response) {
-	requestParams := prometheus.ParseMonitoringRequestParams(request)
-	// multiple
-	rawMetrics := metrics.GetNamespaceLevelMetrics(requestParams)
-
-	// sorting
-	sortedMetrics, maxMetricCount := metrics.Sort(requestParams.SortMetricName, requestParams.SortType, rawMetrics)
-	// paging
-	pagedMetrics := metrics.Page(requestParams.PageNum, requestParams.LimitNum, sortedMetrics, maxMetricCount)
-	response.WriteAsJson(pagedMetrics)
-}
-
 func MonitorCluster(request *restful.Request, response *restful.Response) {
-	requestParams := prometheus.ParseMonitoringRequestParams(request)
+	r := ParseRequestParams(request)
 
-	metricName := requestParams.MetricsName
-	if metricName != "" {
-		// single
-		queryType, params := metrics.AssembleClusterMetricRequestInfo(requestParams, metricName)
-		metricsStr := prometheus.SendMonitoringRequest(prometheus.PrometheusEndpoint, queryType, params)
-		res := metrics.ReformatJson(metricsStr, metricName, map[string]string{metrics.MetricLevelCluster: "local"})
-
-		response.WriteAsJson(res)
+	// TODO: expose kubesphere iam and devops statistics in prometheus format
+	var res *metrics.Response
+	if r.Type == "statistics" {
+		res = metrics.GetClusterStatistics()
 	} else {
-		// multiple
-		res := metrics.GetClusterLevelMetrics(requestParams)
-		response.WriteAsJson(res)
+		res = metrics.GetClusterMetrics(r)
 	}
+
+	response.WriteAsJson(res)
 }
 
 func MonitorNode(request *restful.Request, response *restful.Response) {
-	requestParams := prometheus.ParseMonitoringRequestParams(request)
+	r := ParseRequestParams(request)
+	res := metrics.GetNodeMetrics(r)
+	res, metricsNum := res.SortBy(r.SortMetric, r.SortType)
+	res = res.Page(r.PageNum, r.LimitNum, metricsNum)
+	response.WriteAsJson(res)
+}
 
-	metricName := requestParams.MetricsName
-	if metricName != "" {
-		// single
-		queryType, params := metrics.AssembleNodeMetricRequestInfo(requestParams, metricName)
-		metricsStr := prometheus.SendMonitoringRequest(prometheus.PrometheusEndpoint, queryType, params)
-		res := metrics.ReformatJson(metricsStr, metricName, map[string]string{metrics.MetricLevelNode: ""})
-		// The raw node-exporter result doesn't include ip address information
-		// Thereby, append node ip address to .data.result[].metric
+func MonitorWorkspace(request *restful.Request, response *restful.Response) {
+	r := ParseRequestParams(request)
 
-		nodeAddress := metrics.GetNodeAddressInfo()
-		metrics.AddNodeAddressMetric(res, nodeAddress)
-
-		response.WriteAsJson(res)
+	// TODO: expose kubesphere iam and devops statistics in prometheus format
+	var res *metrics.Response
+	if r.Type == "statistics" && r.WorkspaceName != "" {
+		res = metrics.GetWorkspaceStatistics(r.WorkspaceName)
 	} else {
-		// multiple
-		rawMetrics := metrics.GetNodeLevelMetrics(requestParams)
-		nodeAddress := metrics.GetNodeAddressInfo()
-
-		for i := 0; i < len(rawMetrics.Results); i++ {
-			metrics.AddNodeAddressMetric(&rawMetrics.Results[i], nodeAddress)
-		}
-
-		// sorting
-		sortedMetrics, maxMetricCount := metrics.Sort(requestParams.SortMetricName, requestParams.SortType, rawMetrics)
-		// paging
-		pagedMetrics := metrics.Page(requestParams.PageNum, requestParams.LimitNum, sortedMetrics, maxMetricCount)
-
-		response.WriteAsJson(pagedMetrics)
+		res = metrics.GetWorkspaceMetrics(r)
+		res, metricsNum := res.SortBy(r.SortMetric, r.SortType)
+		res = res.Page(r.PageNum, r.LimitNum, metricsNum)
 	}
+
+	response.WriteAsJson(res)
+}
+
+func MonitorNamespace(request *restful.Request, response *restful.Response) {
+	r := ParseRequestParams(request)
+	res := metrics.GetNamespaceMetrics(r)
+	res, metricsNum := res.SortBy(r.SortMetric, r.SortType)
+	res = res.Page(r.PageNum, r.LimitNum, metricsNum)
+	response.WriteAsJson(res)
+}
+
+func MonitorWorkload(request *restful.Request, response *restful.Response) {
+	r := ParseRequestParams(request)
+	res := metrics.GetWorkloadMetrics(r)
+	res, metricsNum := res.SortBy(r.SortMetric, r.SortType)
+	res = res.Page(r.PageNum, r.LimitNum, metricsNum)
+	response.WriteAsJson(res)
+}
+
+func MonitorPod(request *restful.Request, response *restful.Response) {
+	r := ParseRequestParams(request)
+	res := metrics.GetPodMetrics(r)
+	res, metricsNum := res.SortBy(r.SortMetric, r.SortType)
+	res = res.Page(r.PageNum, r.LimitNum, metricsNum)
+	response.WriteAsJson(res)
+}
+
+func MonitorContainer(request *restful.Request, response *restful.Response) {
+	r := ParseRequestParams(request)
+	res := metrics.GetContainerMetrics(r)
+	res, metricsNum := res.SortBy(r.SortMetric, r.SortType)
+	res = res.Page(r.PageNum, r.LimitNum, metricsNum)
+	response.WriteAsJson(res)
+}
+
+func MonitorPVC(request *restful.Request, response *restful.Response) {
+	r := ParseRequestParams(request)
+	res := metrics.GetPVCMetrics(r)
+	res, metricsNum := res.SortBy(r.SortMetric, r.SortType)
+	res = res.Page(r.PageNum, r.LimitNum, metricsNum)
+	response.WriteAsJson(res)
 }
 
 func MonitorComponent(request *restful.Request, response *restful.Response) {
-	requestParams := prometheus.ParseMonitoringRequestParams(request)
+	r := ParseRequestParams(request)
+	res := metrics.GetComponentMetrics(r)
+	response.WriteAsJson(res)
+}
 
-	if requestParams.MetricsFilter == "" {
-		requestParams.MetricsFilter = requestParams.ComponentName + "_.*"
+func ParseRequestParams(request *restful.Request) metrics.RequestParams {
+	var requestParams metrics.RequestParams
+
+	queryTime := strings.Trim(request.QueryParameter("time"), " ")
+	start := strings.Trim(request.QueryParameter("start"), " ")
+	end := strings.Trim(request.QueryParameter("end"), " ")
+	step := strings.Trim(request.QueryParameter("step"), " ")
+	sortMetric := strings.Trim(request.QueryParameter("sort_metric"), " ")
+	sortType := strings.Trim(request.QueryParameter("sort_type"), " ")
+	pageNum := strings.Trim(request.QueryParameter("page"), " ")
+	limitNum := strings.Trim(request.QueryParameter("limit"), " ")
+	tp := strings.Trim(request.QueryParameter("type"), " ")
+	metricsFilter := strings.Trim(request.QueryParameter("metrics_filter"), " ")
+	resourcesFilter := strings.Trim(request.QueryParameter("resources_filter"), " ")
+	nodeName := strings.Trim(request.PathParameter("node"), " ")
+	workspaceName := strings.Trim(request.PathParameter("workspace"), " ")
+	namespaceName := strings.Trim(request.PathParameter("namespace"), " ")
+	workloadKind := strings.Trim(request.PathParameter("kind"), " ")
+	workloadName := strings.Trim(request.PathParameter("workload"), " ")
+	podName := strings.Trim(request.PathParameter("pod"), " ")
+	containerName := strings.Trim(request.PathParameter("container"), " ")
+	pvcName := strings.Trim(request.PathParameter("pvc"), " ")
+	storageClassName := strings.Trim(request.PathParameter("storageclass"), " ")
+	componentName := strings.Trim(request.PathParameter("component"), " ")
+
+	requestParams = metrics.RequestParams{
+		SortMetric:       sortMetric,
+		SortType:         sortType,
+		PageNum:          pageNum,
+		LimitNum:         limitNum,
+		Type:             tp,
+		MetricsFilter:    metricsFilter,
+		ResourcesFilter:  resourcesFilter,
+		NodeName:         nodeName,
+		WorkspaceName:    workspaceName,
+		NamespaceName:    namespaceName,
+		WorkloadKind:     workloadKind,
+		WorkloadName:     workloadName,
+		PodName:          podName,
+		ContainerName:    containerName,
+		PVCName:          pvcName,
+		StorageClassName: storageClassName,
+		ComponentName:    componentName,
 	}
 
-	rawMetrics := metrics.GetComponentLevelMetrics(requestParams)
+	if metricsFilter == "" {
+		requestParams.MetricsFilter = ".*"
+	}
+	if resourcesFilter == "" {
+		requestParams.ResourcesFilter = ".*"
+	}
 
-	response.WriteAsJson(rawMetrics)
+	v := url.Values{}
+
+	if start != "" && end != "" { // range query
+
+		// metrics from a deleted namespace should be hidden
+		// therefore, for range query, if range query start time is less than the namespace creation time, set it to creation time
+		// it is the same with query at a fixed time point
+		if namespaceName != "" {
+			nsLister := informers.SharedInformerFactory().Core().V1().Namespaces().Lister()
+			ns, err := nsLister.Get(namespaceName)
+			if err == nil {
+				creationTime := ns.CreationTimestamp.Time.Unix()
+				queryStart, err := strconv.ParseInt(start, 10, 64)
+				if err == nil && queryStart < creationTime {
+					start = strconv.FormatInt(creationTime, 10)
+				}
+			}
+		}
+
+		v.Set("start", start)
+		v.Set("end", end)
+
+		if step == "" {
+			v.Set("step", metrics.DefaultQueryStep)
+		} else {
+			v.Set("step", step)
+		}
+		requestParams.QueryParams = v
+		requestParams.QueryType = metrics.RangeQuery
+
+		return requestParams
+	} else if queryTime != "" { // query
+		v.Set("time", queryTime)
+	}
+
+	requestParams.QueryParams = v
+	requestParams.QueryType = metrics.Query
+	return requestParams
 }

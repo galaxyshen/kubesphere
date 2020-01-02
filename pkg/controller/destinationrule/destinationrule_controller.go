@@ -2,9 +2,12 @@ package destinationrule
 
 import (
 	"fmt"
-	"github.com/knative/pkg/apis/istio/v1alpha3"
+	"reflect"
+
+	apinetworkingv1alpha3 "istio.io/api/networking/v1alpha3"
+	clientgonetworkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -14,16 +17,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/kubernetes/pkg/controller"
-	"k8s.io/kubernetes/pkg/util/metrics"
+	log "k8s.io/klog"
 	servicemeshv1alpha2 "kubesphere.io/kubesphere/pkg/apis/servicemesh/v1alpha2"
 	"kubesphere.io/kubesphere/pkg/controller/virtualservice/util"
-	"reflect"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
-	istioclientset "github.com/knative/pkg/client/clientset/versioned"
-	istioinformers "github.com/knative/pkg/client/informers/externalversions/istio/v1alpha3"
-	istiolisters "github.com/knative/pkg/client/listers/istio/v1alpha3"
+	"time"
+
+	istioclientset "istio.io/client-go/pkg/clientset/versioned"
+	istioinformers "istio.io/client-go/pkg/informers/externalversions/networking/v1alpha3"
+	istiolisters "istio.io/client-go/pkg/listers/networking/v1alpha3"
 	informersv1 "k8s.io/client-go/informers/apps/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -32,8 +34,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"time"
 
+	servicemeshclient "kubesphere.io/kubesphere/pkg/client/clientset/versioned"
 	servicemeshinformers "kubesphere.io/kubesphere/pkg/client/informers/externalversions/servicemesh/v1alpha2"
 	servicemeshlisters "kubesphere.io/kubesphere/pkg/client/listers/servicemesh/v1alpha2"
 )
@@ -47,12 +49,11 @@ const (
 	maxRetries = 15
 )
 
-var log = logf.Log.WithName("destinationrule-controller")
-
 type DestinationRuleController struct {
 	client clientset.Interface
 
 	destinationRuleClient istioclientset.Interface
+	servicemeshClient     servicemeshclient.Interface
 
 	eventBroadcaster record.EventBroadcaster
 	eventRecorder    record.EventRecorder
@@ -79,7 +80,8 @@ func NewDestinationRuleController(deploymentInformer informersv1.DeploymentInfor
 	serviceInformer coreinformers.ServiceInformer,
 	servicePolicyInformer servicemeshinformers.ServicePolicyInformer,
 	client clientset.Interface,
-	destinationRuleClient istioclientset.Interface) *DestinationRuleController {
+	destinationRuleClient istioclientset.Interface,
+	servicemeshClient servicemeshclient.Interface) *DestinationRuleController {
 
 	broadcaster := record.NewBroadcaster()
 	broadcaster.StartLogging(func(format string, args ...interface{}) {
@@ -88,13 +90,10 @@ func NewDestinationRuleController(deploymentInformer informersv1.DeploymentInfor
 	broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().Events("")})
 	recorder := broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "destinationrule-controller"})
 
-	if client != nil && client.CoreV1().RESTClient().GetRateLimiter() != nil {
-		metrics.RegisterMetricAndTrackRateLimiterUsage("virtualservice_controller", client.CoreV1().RESTClient().GetRateLimiter())
-	}
-
 	v := &DestinationRuleController{
 		client:                client,
 		destinationRuleClient: destinationRuleClient,
+		servicemeshClient:     servicemeshClient,
 		queue:                 workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "destinationrule"),
 		workerLoopPeriod:      time.Second,
 	}
@@ -143,20 +142,18 @@ func NewDestinationRuleController(deploymentInformer informersv1.DeploymentInfor
 }
 
 func (v *DestinationRuleController) Start(stopCh <-chan struct{}) error {
-	v.Run(5, stopCh)
-
-	return nil
+	return v.Run(5, stopCh)
 }
 
-func (v *DestinationRuleController) Run(workers int, stopCh <-chan struct{}) {
+func (v *DestinationRuleController) Run(workers int, stopCh <-chan struct{}) error {
 	defer utilruntime.HandleCrash()
 	defer v.queue.ShutDown()
 
 	log.Info("starting destinationrule controller")
 	defer log.Info("shutting down destinationrule controller")
 
-	if !controller.WaitForCacheSync("destinationrule-controller", stopCh, v.serviceSynced, v.destinationRuleSynced, v.deploymentSynced, v.servicePolicySynced) {
-		return
+	if !cache.WaitForCacheSync(stopCh, v.serviceSynced, v.destinationRuleSynced, v.deploymentSynced, v.servicePolicySynced) {
+		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
 	for i := 0; i < workers; i++ {
@@ -164,10 +161,11 @@ func (v *DestinationRuleController) Run(workers int, stopCh <-chan struct{}) {
 	}
 
 	<-stopCh
+	return nil
 }
 
 func (v *DestinationRuleController) enqueueService(obj interface{}) {
-	key, err := controller.KeyFunc(obj)
+	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", obj, err))
 		return
@@ -211,12 +209,20 @@ func (v *DestinationRuleController) syncService(key string) error {
 
 	service, err := v.serviceLister.Services(namespace).Get(name)
 	if err != nil {
-		// Delete the corresponding destinationrule, as the service has been deleted.
+		// delete the corresponding destinationrule if there is any, as the service has been deleted.
 		err = v.destinationRuleClient.NetworkingV1alpha3().DestinationRules(namespace).Delete(name, nil)
-		if !errors.IsNotFound(err) {
+		if err != nil && !errors.IsNotFound(err) {
 			log.Error(err, "delete destination rule failed", "namespace", namespace, "name", name)
 			return err
 		}
+
+		// delete orphan service policy if there is any
+		err = v.servicemeshClient.ServicemeshV1alpha2().ServicePolicies(namespace).Delete(name, nil)
+		if err != nil && !errors.IsNotFound(err) {
+			log.Error(err, "delete orphan service policy failed", "namespace", namespace, "name", name)
+			return err
+		}
+
 		return nil
 	}
 
@@ -239,7 +245,7 @@ func (v *DestinationRuleController) syncService(key string) error {
 		return err
 	}
 
-	subsets := make([]v1alpha3.Subset, 0)
+	subsets := make([]*apinetworkingv1alpha3.Subset, 0)
 	for _, deployment := range deployments {
 
 		// not a valid deployment we required
@@ -257,7 +263,7 @@ func (v *DestinationRuleController) syncService(key string) error {
 			continue
 		}
 
-		subset := v1alpha3.Subset{
+		subset := &apinetworkingv1alpha3.Subset{
 			Name: util.NormalizeVersionName(version),
 			Labels: map[string]string{
 				util.VersionLabel: version,
@@ -270,12 +276,12 @@ func (v *DestinationRuleController) syncService(key string) error {
 	currentDestinationRule, err := v.destinationRuleLister.DestinationRules(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			currentDestinationRule = &v1alpha3.DestinationRule{
+			currentDestinationRule = &clientgonetworkingv1alpha3.DestinationRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   service.Name,
 					Labels: service.Labels,
 				},
-				Spec: v1alpha3.DestinationRuleSpec{
+				Spec: apinetworkingv1alpha3.DestinationRule{
 					Host: name,
 				},
 			}
@@ -293,6 +299,7 @@ func (v *DestinationRuleController) syncService(key string) error {
 	}
 
 	dr := currentDestinationRule.DeepCopy()
+	dr.Spec.TrafficPolicy = nil
 	dr.Spec.Subsets = subsets
 	//
 	if len(servicePolicies) > 0 {
@@ -420,7 +427,7 @@ func (v *DestinationRuleController) getDeploymentServiceMemberShip(deployment *a
 		}
 		selector := labels.Set(service.Spec.Selector).AsSelectorPreValidated()
 		if selector.Matches(labels.Set(deployment.Spec.Selector.MatchLabels)) {
-			key, err := controller.KeyFunc(service)
+			key, err := cache.MetaNamespaceKeyFunc(service)
 			if err != nil {
 				return nil, err
 			}
@@ -445,7 +452,7 @@ func (v *DestinationRuleController) addServicePolicy(obj interface{}) {
 
 	set := sets.String{}
 	for _, service := range services {
-		key, err := controller.KeyFunc(service)
+		key, err := cache.MetaNamespaceKeyFunc(service)
 		if err != nil {
 			utilruntime.HandleError(err)
 			continue
@@ -460,7 +467,7 @@ func (v *DestinationRuleController) addServicePolicy(obj interface{}) {
 }
 
 func (v *DestinationRuleController) handleErr(err error, key interface{}) {
-	if err != nil {
+	if err == nil {
 		v.queue.Forget(key)
 		return
 	}

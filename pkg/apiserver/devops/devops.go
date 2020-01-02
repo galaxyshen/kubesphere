@@ -20,14 +20,17 @@ package devops
 import (
 	"encoding/json"
 	"github.com/emicklei/go-restful"
-	log "github.com/golang/glog"
+	log "k8s.io/klog"
 	"kubesphere.io/kubesphere/pkg/models/devops"
 	"net/http"
+	"strings"
 )
 
+const jenkinsHeaderPre = "X-"
+
 func GetPipeline(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
 
 	res, err := devops.GetPipeline(projectName, pipelineName, req.Request)
 	if err != nil {
@@ -51,8 +54,8 @@ func SearchPipelines(req *restful.Request, resp *restful.Response) {
 }
 
 func SearchPipelineRuns(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
 
 	res, err := devops.SearchPipelineRuns(projectName, pipelineName, req.Request)
 	if err != nil {
@@ -65,10 +68,10 @@ func SearchPipelineRuns(req *restful.Request, resp *restful.Response) {
 }
 
 func GetBranchPipelineRun(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	branchName := req.PathParameter("branchName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	branchName := req.PathParameter("branch")
+	runId := req.PathParameter("run")
 
 	res, err := devops.GetBranchPipelineRun(projectName, pipelineName, branchName, runId, req.Request)
 	if err != nil {
@@ -81,10 +84,10 @@ func GetBranchPipelineRun(req *restful.Request, resp *restful.Response) {
 }
 
 func GetPipelineRunNodesbyBranch(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	branchName := req.PathParameter("branchName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	branchName := req.PathParameter("branch")
+	runId := req.PathParameter("run")
 
 	res, err := devops.GetPipelineRunNodesbyBranch(projectName, pipelineName, branchName, runId, req.Request)
 	if err != nil {
@@ -97,40 +100,51 @@ func GetPipelineRunNodesbyBranch(req *restful.Request, resp *restful.Response) {
 }
 
 func GetBranchStepLog(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	branchName := req.PathParameter("branchName")
-	runId := req.PathParameter("runId")
-	nodeId := req.PathParameter("nodeId")
-	stepId := req.PathParameter("stepId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	branchName := req.PathParameter("branch")
+	runId := req.PathParameter("run")
+	nodeId := req.PathParameter("node")
+	stepId := req.PathParameter("step")
 
-	res, err := devops.GetBranchStepLog(projectName, pipelineName, branchName, runId, nodeId, stepId, req.Request)
+	res, header, err := devops.GetBranchStepLog(projectName, pipelineName, branchName, runId, nodeId, stepId, req.Request)
+
 	if err != nil {
 		parseErr(err, resp)
 		return
+	}
+	for k, v := range header {
+		if strings.HasPrefix(k, jenkinsHeaderPre) {
+			resp.AddHeader(k, v[0])
+		}
 	}
 	resp.Write(res)
 }
 
 func GetStepLog(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	runId := req.PathParameter("runId")
-	nodeId := req.PathParameter("nodeId")
-	stepId := req.PathParameter("stepId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	runId := req.PathParameter("run")
+	nodeId := req.PathParameter("node")
+	stepId := req.PathParameter("step")
 
-	res, err := devops.GetStepLog(projectName, pipelineName, runId, nodeId, stepId, req.Request)
+	res, header, err := devops.GetStepLog(projectName, pipelineName, runId, nodeId, stepId, req.Request)
 	if err != nil {
 		parseErr(err, resp)
 		return
 	}
+	for k, v := range header {
+		if strings.HasPrefix(k, jenkinsHeaderPre) {
+			resp.AddHeader(k, v[0])
+		}
+	}
 	resp.Write(res)
 }
 
-func Validate(req *restful.Request, resp *restful.Response) {
-	scmId := req.PathParameter("scmId")
+func GetSCMServers(req *restful.Request, resp *restful.Response) {
+	scmId := req.PathParameter("scm")
 
-	res, err := devops.Validate(scmId, req.Request)
+	res, err := devops.GetSCMServers(scmId, req.Request)
 	if err != nil {
 		parseErr(err, resp)
 		return
@@ -140,8 +154,43 @@ func Validate(req *restful.Request, resp *restful.Response) {
 	resp.Write(res)
 }
 
+func CreateSCMServers(req *restful.Request, resp *restful.Response) {
+	scmId := req.PathParameter("scm")
+
+	res, err := devops.CreateSCMServers(scmId, req.Request)
+	if err != nil {
+		parseErr(err, resp)
+		return
+	}
+
+	resp.Header().Set(restful.HEADER_ContentType, restful.MIME_JSON)
+	resp.Write(res)
+}
+
+func Validate(req *restful.Request, resp *restful.Response) {
+	scmId := req.PathParameter("scm")
+
+	res, err := devops.Validate(scmId, req.Request)
+	if err != nil {
+		log.Error(err)
+		if jErr, ok := err.(*devops.JkError); ok {
+			if jErr.Code != http.StatusUnauthorized {
+				resp.WriteError(jErr.Code, err)
+			} else {
+				resp.WriteHeader(http.StatusPreconditionRequired)
+			}
+		} else {
+			resp.WriteError(http.StatusInternalServerError, err)
+		}
+		return
+	}
+
+	resp.Header().Set(restful.HEADER_ContentType, restful.MIME_JSON)
+	resp.Write(res)
+}
+
 func GetSCMOrg(req *restful.Request, resp *restful.Response) {
-	scmId := req.PathParameter("scmId")
+	scmId := req.PathParameter("scm")
 
 	res, err := devops.GetSCMOrg(scmId, req.Request)
 	if err != nil {
@@ -154,8 +203,8 @@ func GetSCMOrg(req *restful.Request, resp *restful.Response) {
 }
 
 func GetOrgRepo(req *restful.Request, resp *restful.Response) {
-	scmId := req.PathParameter("scmId")
-	organizationId := req.PathParameter("organizationId")
+	scmId := req.PathParameter("scm")
+	organizationId := req.PathParameter("organization")
 
 	res, err := devops.GetOrgRepo(scmId, organizationId, req.Request)
 	if err != nil {
@@ -168,10 +217,10 @@ func GetOrgRepo(req *restful.Request, resp *restful.Response) {
 }
 
 func StopBranchPipeline(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	branchName := req.PathParameter("branchName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	branchName := req.PathParameter("branch")
+	runId := req.PathParameter("run")
 
 	res, err := devops.StopBranchPipeline(projectName, pipelineName, branchName, runId, req.Request)
 	if err != nil {
@@ -184,9 +233,9 @@ func StopBranchPipeline(req *restful.Request, resp *restful.Response) {
 }
 
 func StopPipeline(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	runId := req.PathParameter("run")
 
 	res, err := devops.StopPipeline(projectName, pipelineName, runId, req.Request)
 	if err != nil {
@@ -199,10 +248,10 @@ func StopPipeline(req *restful.Request, resp *restful.Response) {
 }
 
 func ReplayBranchPipeline(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	branchName := req.PathParameter("branchName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	branchName := req.PathParameter("branch")
+	runId := req.PathParameter("run")
 
 	res, err := devops.ReplayBranchPipeline(projectName, pipelineName, branchName, runId, req.Request)
 	if err != nil {
@@ -215,9 +264,9 @@ func ReplayBranchPipeline(req *restful.Request, resp *restful.Response) {
 }
 
 func ReplayPipeline(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	runId := req.PathParameter("run")
 
 	res, err := devops.ReplayPipeline(projectName, pipelineName, runId, req.Request)
 	if err != nil {
@@ -230,10 +279,10 @@ func ReplayPipeline(req *restful.Request, resp *restful.Response) {
 }
 
 func GetBranchRunLog(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	branchName := req.PathParameter("branchName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	branchName := req.PathParameter("branch")
+	runId := req.PathParameter("run")
 
 	res, err := devops.GetBranchRunLog(projectName, pipelineName, branchName, runId, req.Request)
 	if err != nil {
@@ -245,9 +294,9 @@ func GetBranchRunLog(req *restful.Request, resp *restful.Response) {
 }
 
 func GetRunLog(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	runId := req.PathParameter("run")
 
 	res, err := devops.GetRunLog(projectName, pipelineName, runId, req.Request)
 	if err != nil {
@@ -259,10 +308,10 @@ func GetRunLog(req *restful.Request, resp *restful.Response) {
 }
 
 func GetBranchArtifacts(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	branchName := req.PathParameter("branchName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	branchName := req.PathParameter("branch")
+	runId := req.PathParameter("run")
 
 	res, err := devops.GetBranchArtifacts(projectName, pipelineName, branchName, runId, req.Request)
 	if err != nil {
@@ -274,9 +323,9 @@ func GetBranchArtifacts(req *restful.Request, resp *restful.Response) {
 }
 
 func GetArtifacts(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	runId := req.PathParameter("run")
 
 	res, err := devops.GetArtifacts(projectName, pipelineName, runId, req.Request)
 	if err != nil {
@@ -288,8 +337,8 @@ func GetArtifacts(req *restful.Request, resp *restful.Response) {
 }
 
 func GetPipeBranch(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
 
 	res, err := devops.GetPipeBranch(projectName, pipelineName, req.Request)
 	if err != nil {
@@ -300,15 +349,15 @@ func GetPipeBranch(req *restful.Request, resp *restful.Response) {
 	resp.Write(res)
 }
 
-func CheckBranchPipeline(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	branchName := req.PathParameter("branchName")
-	runId := req.PathParameter("runId")
-	nodeId := req.PathParameter("nodeId")
-	stepId := req.PathParameter("stepId")
+func SubmitBranchInputStep(req *restful.Request, resp *restful.Response) {
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	branchName := req.PathParameter("branch")
+	runId := req.PathParameter("run")
+	nodeId := req.PathParameter("node")
+	stepId := req.PathParameter("step")
 
-	res, err := devops.CheckBranchPipeline(projectName, pipelineName, branchName, runId, nodeId, stepId, req.Request)
+	res, err := devops.SubmitBranchInputStep(projectName, pipelineName, branchName, runId, nodeId, stepId, req.Request)
 	if err != nil {
 		parseErr(err, resp)
 		return
@@ -317,14 +366,14 @@ func CheckBranchPipeline(req *restful.Request, resp *restful.Response) {
 	resp.Write(res)
 }
 
-func CheckPipeline(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	runId := req.PathParameter("runId")
-	nodeId := req.PathParameter("nodeId")
-	stepId := req.PathParameter("stepId")
+func SubmitInputStep(req *restful.Request, resp *restful.Response) {
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	runId := req.PathParameter("run")
+	nodeId := req.PathParameter("node")
+	stepId := req.PathParameter("step")
 
-	res, err := devops.CheckPipeline(projectName, pipelineName, runId, nodeId, stepId, req.Request)
+	res, err := devops.SubmitInputStep(projectName, pipelineName, runId, nodeId, stepId, req.Request)
 	if err != nil {
 		parseErr(err, resp)
 		return
@@ -334,8 +383,8 @@ func CheckPipeline(req *restful.Request, resp *restful.Response) {
 }
 
 func GetConsoleLog(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
 
 	res, err := devops.GetConsoleLog(projectName, pipelineName, req.Request)
 	if err != nil {
@@ -347,8 +396,8 @@ func GetConsoleLog(req *restful.Request, resp *restful.Response) {
 }
 
 func ScanBranch(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
 
 	res, err := devops.ScanBranch(projectName, pipelineName, req.Request)
 	if err != nil {
@@ -359,45 +408,26 @@ func ScanBranch(req *restful.Request, resp *restful.Response) {
 	resp.Write(res)
 }
 
+func RunBranchPipeline(req *restful.Request, resp *restful.Response) {
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	branchName := req.PathParameter("branch")
+
+	res, err := devops.RunBranchPipeline(projectName, pipelineName, branchName, req.Request)
+	if err != nil {
+		parseErr(err, resp)
+		return
+	}
+
+	resp.Header().Set(restful.HEADER_ContentType, restful.MIME_JSON)
+	resp.Write(res)
+}
+
 func RunPipeline(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	branchName := req.PathParameter("branchName")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
 
-	res, err := devops.RunPipeline(projectName, pipelineName, branchName, req.Request)
-	if err != nil {
-		parseErr(err, resp)
-		return
-	}
-
-	resp.Header().Set(restful.HEADER_ContentType, restful.MIME_JSON)
-	resp.Write(res)
-}
-
-func GetBranchStepsStatus(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	branchName := req.PathParameter("branchName")
-	runId := req.PathParameter("runId")
-	nodeId := req.PathParameter("nodeId")
-
-	res, err := devops.GetBranchStepsStatus(projectName, pipelineName, branchName, runId, nodeId, req.Request)
-	if err != nil {
-		parseErr(err, resp)
-		return
-	}
-
-	resp.Header().Set(restful.HEADER_ContentType, restful.MIME_JSON)
-	resp.Write(res)
-}
-
-func GetStepsStatus(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	runId := req.PathParameter("runId")
-	nodeId := req.PathParameter("nodeId")
-
-	res, err := devops.GetStepsStatus(projectName, pipelineName, runId, nodeId, req.Request)
+	res, err := devops.RunPipeline(projectName, pipelineName, req.Request)
 	if err != nil {
 		parseErr(err, resp)
 		return
@@ -419,7 +449,10 @@ func GetCrumb(req *restful.Request, resp *restful.Response) {
 }
 
 func CheckScriptCompile(req *restful.Request, resp *restful.Response) {
-	resBody, err := devops.CheckScriptCompile(req.Request)
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+
+	resBody, err := devops.CheckScriptCompile(projectName, pipelineName, req.Request)
 	if err != nil {
 		parseErr(err, resp)
 		return
@@ -443,7 +476,9 @@ func CheckScriptCompile(req *restful.Request, resp *restful.Response) {
 }
 
 func CheckCron(req *restful.Request, resp *restful.Response) {
-	res, err := devops.CheckCron(req.Request)
+	projectName := req.PathParameter("devops")
+
+	res, err := devops.CheckCron(projectName, req.Request)
 	if err != nil {
 		parseErr(err, resp)
 		return
@@ -454,9 +489,9 @@ func CheckCron(req *restful.Request, resp *restful.Response) {
 }
 
 func GetPipelineRun(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	runId := req.PathParameter("run")
 
 	res, err := devops.GetPipelineRun(projectName, pipelineName, runId, req.Request)
 	if err != nil {
@@ -469,9 +504,9 @@ func GetPipelineRun(req *restful.Request, resp *restful.Response) {
 }
 
 func GetBranchPipeline(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	branchName := req.PathParameter("branchName")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	branchName := req.PathParameter("branch")
 
 	res, err := devops.GetBranchPipeline(projectName, pipelineName, branchName, req.Request)
 	if err != nil {
@@ -484,9 +519,9 @@ func GetBranchPipeline(req *restful.Request, resp *restful.Response) {
 }
 
 func GetPipelineRunNodes(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	runId := req.PathParameter("run")
 
 	res, err := devops.GetPipelineRunNodes(projectName, pipelineName, runId, req.Request)
 	if err != nil {
@@ -498,11 +533,11 @@ func GetPipelineRunNodes(req *restful.Request, resp *restful.Response) {
 }
 
 func GetBranchNodeSteps(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	branchName := req.PathParameter("branchName")
-	runId := req.PathParameter("runId")
-	nodeId := req.PathParameter("nodeId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	branchName := req.PathParameter("branch")
+	runId := req.PathParameter("run")
+	nodeId := req.PathParameter("node")
 
 	res, err := devops.GetBranchNodeSteps(projectName, pipelineName, branchName, runId, nodeId, req.Request)
 	if err != nil {
@@ -514,10 +549,10 @@ func GetBranchNodeSteps(req *restful.Request, resp *restful.Response) {
 }
 
 func GetNodeSteps(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	runId := req.PathParameter("runId")
-	nodeId := req.PathParameter("nodeId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	runId := req.PathParameter("run")
+	nodeId := req.PathParameter("node")
 
 	res, err := devops.GetNodeSteps(projectName, pipelineName, runId, nodeId, req.Request)
 	if err != nil {
@@ -557,6 +592,14 @@ func GetNotifyCommit(req *restful.Request, resp *restful.Response) {
 	resp.Write(res)
 }
 
+func PostNotifyCommit(req *restful.Request, resp *restful.Response) {
+	res, err := devops.GetNotifyCommit(req.Request)
+	if err != nil {
+		parseErr(err, resp)
+		return
+	}
+	resp.Write(res)
+}
 func GithubWebhook(req *restful.Request, resp *restful.Response) {
 	res, err := devops.GithubWebhook(req.Request)
 	if err != nil {
@@ -567,10 +610,10 @@ func GithubWebhook(req *restful.Request, resp *restful.Response) {
 }
 
 func GetBranchNodesDetail(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	branchName := req.PathParameter("branchName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	branchName := req.PathParameter("branch")
+	runId := req.PathParameter("run")
 
 	res, err := devops.GetBranchNodesDetail(projectName, pipelineName, branchName, runId, req.Request)
 	if err != nil {
@@ -581,9 +624,9 @@ func GetBranchNodesDetail(req *restful.Request, resp *restful.Response) {
 }
 
 func GetNodesDetail(req *restful.Request, resp *restful.Response) {
-	projectName := req.PathParameter("projectName")
-	pipelineName := req.PathParameter("pipelineName")
-	runId := req.PathParameter("runId")
+	projectName := req.PathParameter("devops")
+	pipelineName := req.PathParameter("pipeline")
+	runId := req.PathParameter("run")
 
 	res, err := devops.GetNodesDetail(projectName, pipelineName, runId, req.Request)
 	if err != nil {

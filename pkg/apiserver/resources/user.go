@@ -20,20 +20,22 @@ package resources
 import (
 	"github.com/emicklei/go-restful"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/klog"
 	"net/http"
 
-	"kubesphere.io/kubesphere/pkg/errors"
 	"kubesphere.io/kubesphere/pkg/models/kubeconfig"
 	"kubesphere.io/kubesphere/pkg/models/kubectl"
+	"kubesphere.io/kubesphere/pkg/server/errors"
 )
 
 func GetKubectl(req *restful.Request, resp *restful.Response) {
 
-	user := req.PathParameter("username")
+	user := req.PathParameter("user")
 
 	kubectlPod, err := kubectl.GetKubectlPod(user)
 
 	if err != nil {
+		klog.Error(err)
 		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
 		return
 	}
@@ -43,19 +45,19 @@ func GetKubectl(req *restful.Request, resp *restful.Response) {
 
 func GetKubeconfig(req *restful.Request, resp *restful.Response) {
 
-	user := req.PathParameter("username")
+	user := req.PathParameter("user")
 
 	kubectlConfig, err := kubeconfig.GetKubeConfig(user)
 
 	if err != nil {
+		klog.Error(err)
 		if k8serr.IsNotFound(err) {
 			// recreate
 			kubeconfig.CreateKubeConfig(user)
-			resp.WriteHeaderAndEntity(http.StatusNotFound, errors.Wrap(err))
+			resp.WriteHeaderAndJson(http.StatusNotFound, errors.Wrap(err), restful.MIME_JSON)
 		} else {
-			resp.WriteHeaderAndEntity(http.StatusInternalServerError, errors.Wrap(err))
+			resp.WriteHeaderAndJson(http.StatusInternalServerError, errors.Wrap(err), restful.MIME_JSON)
 		}
-
 		return
 	}
 
